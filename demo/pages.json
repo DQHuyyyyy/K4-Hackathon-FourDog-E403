@@ -1,0 +1,246 @@
+{
+  "doc": {
+    "file": "material_95eb786b4d9e.pdf",
+    "course": "COMP2010",
+    "label": "Lecture_material_ms203vsq_ob7vqp",
+    "day": "DAY 02",
+    "totalPages": 76,
+    "source": "Nội dung được đúc lại theo transcript Day 02 trong data pack hackathon (transcript-01/02-clean.md). Dùng nội bộ cho prototype, không phát hành."
+  },
+  "library": [
+    { "name": "Day01", "docs": 2, "state": "PUBLISHED", "open": false,
+      "items": [ { "title": "day01_302.pdf", "pages": "83 trang" }, { "title": "material_mrxpq9zu_t8e6xs…", "pages": "32 trang" } ] },
+    { "name": "Day02", "docs": 1, "state": "PUBLISHED", "badge": "STUDYING", "open": true,
+      "items": [ { "title": "material_95eb786b4d9…", "pages": "76 trang", "active": true } ] },
+    { "name": "Day03", "docs": 2, "state": "PUBLISHED", "open": false,
+      "items": [ { "title": "day03-tu-chatbot-den-agen…", "pages": "—" }, { "title": "material_k29xbf1p_qq0wme…", "pages": "41 trang" } ] },
+    { "name": "Day04", "docs": 3, "state": "PUBLISHED", "open": false,
+      "items": [ { "title": "day04-eval-va-golden-set.pdf", "pages": "38 trang" }, { "title": "day04-worksheet.pdf", "pages": "6 trang" }, { "title": "material_ttq83nse_lm4dvz…", "pages": "22 trang" } ] },
+    { "name": "Day05", "docs": 3, "state": "PUBLISHED", "open": false,
+      "items": [ { "title": "day05-automation-augmentation.pdf", "pages": "45 trang" }, { "title": "day05-phu-luc.pdf", "pages": "12 trang" }, { "title": "material_p71wcxqa_e3vbnk…", "pages": "19 trang" } ] },
+    { "name": "Day06", "docs": 1, "state": "PUBLISHED", "open": false,
+      "items": [ { "title": "day06-demo-day-huong-dan.pdf", "pages": "17 trang" } ] }
+  ],
+  "pages": [
+    {
+      "n": 1,
+      "kind": "cover",
+      "foot": "MỞ ĐẦU · BÌA",
+      "title": "Xác định bài toán <em>kinh doanh</em> cho AI",
+      "sub": "— Day 02 · Từ yêu cầu mơ hồ đến một bài toán đáng làm",
+      "rows": [
+        { "text": "AI · 20K — Chương trình đào tạo AI Product Thinking" },
+        { "text": "Buổi sáng: tìm đúng vấn đề · Buổi chiều: soi bài toán các nhóm" }
+      ]
+    },
+    {
+      "n": 2,
+      "kind": "instructor",
+      "foot": "MỞ ĐẦU · INSTRUCTOR",
+      "title": "Giảng viên",
+      "sub": "— Người dẫn buổi Day 02",
+      "rows": [
+        { "text": "Hơn 10 năm làm sản phẩm, đi qua low-code / no-code trước khi làm sản phẩm AI." },
+        { "text": "Quan điểm xuyên suốt buổi học: <b>công nghệ sinh ra để giải một vấn đề</b> — biết vấn đề trước, chọn công cụ sau." },
+        { "text": "Tên giảng viên đã được ẩn theo quy định bảo mật của data pack." }
+      ]
+    },
+    {
+      "n": 3,
+      "kind": "numbered",
+      "foot": "MỞ ĐẦU · 4 CÂU HỎI",
+      "title": "Bốn câu hỏi <em>trọng tâm</em>",
+      "sub": "— Từ xác định bài toán đến quyết định ứng dụng AI",
+      "rows": [
+        { "no": "01", "text": "Bài toán có thực sự cần <b>AI</b> giải quyết?" },
+        { "no": "02", "text": "Nếu có, giải pháp ở cấp độ nào: <b>Rule, Workflow, hay Agent?</b>" },
+        { "no": "03", "text": "<b>Problem Statement</b> đã đủ rõ ràng để triển khai?" },
+        { "no": "04", "text": "Khi nào quyết định: <b>Go, Not Yet, hay No-Go?</b>" }
+      ]
+    },
+    {
+      "n": 4,
+      "kind": "agenda",
+      "foot": "MỞ ĐẦU · AGENDA",
+      "title": "Agenda",
+      "sub": "— Năm phần của buổi Day 02",
+      "rows": [
+        { "no": "1", "text": "Bối cảnh — làm sản phẩm AI khác gì làm sản phẩm thường" },
+        { "no": "2", "text": "Tìm đúng vấn đề — Double Diamond, First Principle" },
+        { "no": "3", "text": "Công cụ hội tụ — Five Whys, ma trận Tác động – Nỗ lực" },
+        { "no": "4", "text": "Viết Problem Statement + chỉ số thành công" },
+        { "no": "5", "text": "Chọn mức độ AI — Automation/Augmentation, Rule/Workflow/Agent" }
+      ]
+    },
+    {
+      "n": 5,
+      "kind": "content",
+      "foot": "PHẦN 1 · BỐI CẢNH",
+      "title": "Làm sản phẩm AI <em>khó hơn</em> làm sản phẩm",
+      "sub": "— Vì nó chứa trọn phần làm sản phẩm, cộng thêm một lớp nữa",
+      "rows": [
+        { "text": "Làm sản phẩm AI <b>bao gồm</b> làm sản phẩm — vẫn phải nắm nguyên lý phát triển sản phẩm trước đã." },
+        { "text": "Cộng thêm lớp AI: hiểu AI làm được gì / không làm được gì, thiết kế trải nghiệm với AI, xử lý lỗi kiểu mới." },
+        { "text": "AI sinh ra theo <b>xác suất</b>: 100 lần chạy không cho 100 kết quả giống nhau — khác hẳn sản phẩm truyền thống." },
+        { "text": "Thống kê thế giới: <b>70% thành công của việc đưa AI vào doanh nghiệp đến từ con người và vận hành</b>, không phải từ công nghệ." }
+      ]
+    },
+    {
+      "n": 6,
+      "kind": "content",
+      "foot": "PHẦN 1 · BỐI CẢNH",
+      "title": "Kỳ vọng người dùng đã <em>đổi</em>",
+      "sub": "— Dễ build hơn nghĩa là cạnh tranh khốc liệt hơn",
+      "rows": [
+        { "text": "Bốn năm trước chưa có ChatGPT, không ai kỳ vọng hỏi máy là có câu trả lời. Giờ sai một câu là người dùng la lên." },
+        { "text": "Ai cũng dễ build hơn → thị trường tràn sản phẩm → bạn phải giành <b>thị phần sự chú ý</b> trong 24 giờ của một con người." },
+        { "text": "<b>Chi phí chuyển đổi rẻ đi rất nhiều:</b> export dữ liệu dễ, không phải học lại — user đổi sản phẩm như đổi áo." },
+        { "text": "Kết luận: user không đủ kiên nhẫn thử sai với bạn, trừ khi bạn độc quyền." }
+      ]
+    },
+    {
+      "n": 7,
+      "kind": "content",
+      "foot": "PHẦN 2 · TÌM VẤN ĐỀ",
+      "title": "Từ đề bài <em>mơ hồ</em> đến vấn đề thật",
+      "sub": "— \"Xây cho anh một con AI chatbot support\" là đề bài gì?",
+      "rows": [
+        { "text": "\"Support\" — support cái gì, cho ai? Đề bài quá rộng, vẫn còn mơ hồ." },
+        { "text": "Hỏi sâu thì hoá ra lý do thật là <b>sale đang quá tải</b>. Hỏi tiếp: quá tải chỗ nào? Có khi có lời giải không cần chatbot." },
+        { "text": "Dùng <b>Five Whys</b> — hỏi \"vì sao\" tới năm lần để đào xuống điểm đau thật." },
+        { "text": "Lãnh đạo hay nhảy thẳng vào giải pháp, và không gian lời giải của họ đang bị giới hạn. <b>Hãy phản biện đề bài.</b>" },
+        { "text": "Report 2 tiếng/tuần thì viết một cái skill là xong — <b>đừng lạm dụng AI</b>, đừng build agent to cho việc nhỏ." }
+      ]
+    },
+    {
+      "n": 8,
+      "kind": "content",
+      "foot": "PHẦN 2 · TÌM VẤN ĐỀ",
+      "title": "Double Diamond — <em>hai viên kim cương</em>",
+      "sub": "— Viên thứ nhất tìm đúng vấn đề, viên thứ hai tìm đúng giải pháp",
+      "rows": [
+        { "k": "Phân kỳ", "text": "Mở rộng không gian khám phá — càng nhiều ứng cử viên, xác suất tìm ra cái đúng càng cao." },
+        { "k": "Hội tụ", "text": "Quy nạp lại — tìm điểm chung, gom nhóm, xếp thứ tự ưu tiên." },
+        { "k": "Lặp lại", "text": "Bốn pha: mở rộng → hội tụ (ra vấn đề) → mở rộng → hội tụ (ra giải pháp)." },
+        { "text": "Nghiên cứu: team dựng <b>ba prototype</b> cho user thì cả ba đều tốt hơn so với chỉ dựng một — và user cũng chọn tốt hơn." }
+      ]
+    },
+    {
+      "n": 9,
+      "kind": "content",
+      "foot": "PHẦN 2 · TÌM VẤN ĐỀ",
+      "title": "Làm đúng cái sai hay <em>làm sai cái đúng?</em>",
+      "sub": "— Câu hỏi gây tranh cãi nhất của buổi học",
+      "rows": [
+        { "k": "Làm sai cái đúng", "text": "Vấn đề đúng thì không gian giải pháp đã được khoanh đúng — kiên trì thử là sẽ ra, mỗi lần sai còn học được." },
+        { "k": "Làm đúng cái sai", "text": "<b>Nguy hiểm hơn.</b> Bạn tối ưu cho một mục tiêu đã sai, lại có ảo tưởng mình làm đúng nên không quay lại verify." },
+        { "text": "<b>Sunk cost</b> — bỏ ra càng nhiều chi phí thì càng khó từ bỏ, càng khó hỏi lại \"cái này còn nên làm không?\"" },
+        { "text": "Thói quen cần rèn: thỉnh thoảng dừng lại, hỏi lại vấn đề còn đúng trong bối cảnh hiện tại hay không." }
+      ]
+    },
+    {
+      "n": 10,
+      "kind": "content",
+      "foot": "PHẦN 2 · TÌM VẤN ĐỀ",
+      "title": "First Principle <em>Thinking</em>",
+      "sub": "— Bóc vấn đề về nguyên lý không chia nhỏ được nữa",
+      "rows": [
+        { "text": "Không sao chép cách làm của người khác — chẻ vấn đề xuống tầng nguyên bản rồi giải từ đó." },
+        { "text": "SpaceX: tên lửa đắt → tên lửa gồm những gì? → chia nhỏ ra thì <b>không đắt như vậy</b> → phóng xong thu lại tái sử dụng được không?" },
+        { "text": "Càng nhiều kinh nghiệm càng dễ mắc bẫy tin vào kinh nghiệm — mà kinh nghiệm đó có thể đã hết phù hợp." },
+        { "text": "Kinh nghiệm người cũ chỉ mang tính tham khảo; hãy tự xây <b>mental model</b> của mình." }
+      ]
+    },
+    {
+      "n": 11,
+      "kind": "content",
+      "foot": "PHẦN 3 · CÔNG CỤ",
+      "title": "Kỹ thuật <em>phân kỳ</em> và <em>hội tụ</em>",
+      "sub": "— Mở ra bằng gì, thu lại bằng gì",
+      "rows": [
+        { "k": "Mở ra", "text": "Quan sát thực địa · phỏng vấn & survey user · nhật ký hành vi · phân tích dữ liệu tracking." },
+        { "k": "Thu lại", "text": "Lọc trùng · gom nhóm theo root cause · Five Whys · sơ đồ đồng cảm · ma trận tác động – nỗ lực." },
+        { "text": "Insight quan sát tại chỗ thường <b>không lấy được qua phỏng vấn</b> — phải đến tận nơi." },
+        { "text": "10 vấn đề liệt kê ra có thể chỉ là 5 root cause. Gom nhóm trước khi đánh giá." },
+        { "text": "AI hữu ích ở cả hai pha: gợi ý mở rộng ý tưởng, rồi tổng hợp và validate lại danh sách." }
+      ]
+    },
+    {
+      "n": 12,
+      "kind": "content",
+      "foot": "PHẦN 3 · CÔNG CỤ",
+      "title": "Ma trận <em>Tác động – Nỗ lực</em>",
+      "sub": "— Framework đơn giản nhất để biết cái gì đáng làm trước",
+      "rows": [
+        { "k": "Tác động", "text": "Giải được thì tiết kiệm bao nhiêu giờ / thêm bao nhiêu doanh thu. VD: 2 tiếng/tuần × 4 = 8 tiếng/tháng." },
+        { "k": "Nỗ lực", "text": "Cần bao nhiêu người × bao lâu, nhân với mức lương — ước lượng thôi cũng được." },
+        { "k": "Quick win", "text": "Ô <b>tác động cao – nỗ lực thấp</b>. Luôn ưu tiên lấy quick win trước để tạo niềm tin." },
+        { "k": "Bỏ", "text": "Ô nỗ lực cao – tác động thấp. 5 người làm 1 tháng để tiết kiệm vài trăm đô thì không đáng." },
+        { "text": "Áp dụng được cả cho <b>các bước bên trong một dự án</b>, không chỉ để chọn giữa nhiều dự án." }
+      ]
+    },
+    {
+      "n": 13,
+      "kind": "content",
+      "foot": "PHẦN 4 · PHÁT BIỂU BÀI TOÁN",
+      "title": "Khung viết <em>Problem Statement</em>",
+      "sub": "— Năm ô phải điền trước khi nghĩ tới giải pháp",
+      "rows": [
+        { "no": "01", "text": "<b>Đối tượng</b> — ai đang gặp vấn đề này, cụ thể tới vai." },
+        { "no": "02", "text": "<b>Quy trình hiện tại</b> — bình thường họ làm thế nào, từng bước, mất bao lâu." },
+        { "no": "03", "text": "<b>Nút thắt</b> — chỗ nào trong quy trình tốn thời gian nhất." },
+        { "no": "04", "text": "<b>Tác động</b> — nút thắt đó đang gây hậu quả gì, định lượng ra." },
+        { "no": "05", "text": "<b>Thế nào là thành công</b> — chỉ số cụ thể nếu giải được." },
+        { "text": "Quy trình là chỗ tạo ra <b>khác biệt của giải pháp</b> — viết kỹ nhất có thể, đặc biệt với các lĩnh vực chuyên môn." }
+      ]
+    },
+    {
+      "n": 14,
+      "kind": "content",
+      "foot": "PHẦN 4 · PHÁT BIỂU BÀI TOÁN",
+      "title": "Định lượng <em>chỉ số thành công</em>",
+      "sub": "— Không có số thì không thuyết phục được ai",
+      "rows": [
+        { "text": "Ví dụ đã điền: \"Mỗi thứ Hai mất <b>90 phút</b> tổng hợp weekly report từ nhiều nền tảng, tốn nhất ở bước viết narrative.\"" },
+        { "text": "Chỉ số thành công: hiện tại mất 30 phút đọc tài liệu → giải xong phải <b>dưới 5 phút</b>." },
+        { "text": "Câu công ty chắc chắn hỏi: AI này giúp sinh lời hay tiết kiệm bao nhiêu? → quy ra giờ công × chi phí nhân công." },
+        { "text": "Không cần con số tuyệt đối chính xác, nhưng <b>phải có con số</b> để hình dung được tác động." },
+        { "text": "Trước khi chốt AI, đổi câu trả lời thành câu hỏi: <b>còn cách nào khác không?</b>" }
+      ]
+    },
+    {
+      "n": 15,
+      "kind": "content",
+      "foot": "PHẦN 5 · MỨC ĐỘ AI",
+      "title": "<em>Automation</em> hay <em>Augmentation?</em>",
+      "sub": "— Không phải hai thái cực mà là một cái phổ",
+      "rows": [
+        { "k": "Automation", "text": "Máy tự động làm thay. Cho AI toàn quyền thì phải chấp nhận rủi ro kèm theo." },
+        { "k": "Augmentation", "text": "Vẫn có con người giám sát, AI chỉ tăng cường. <b>Luôn nên bắt đầu từ đây.</b>" },
+        { "text": "Quy trình 10 bước mà đưa AI vào 2 bước = mức automate 20% — vẫn nghiêng về augmentation. Tăng dần khi đã quan sát đủ." },
+        { "text": "<b>Độ hậu quả</b> là yếu tố quyết định: việc mà sai gây hại lớn thì phải nằm gần phía augmentation." },
+        { "text": "Đừng cố automate 100% ngay lập tức — rủi ro rất lớn." }
+      ]
+    },
+    {
+      "n": 16,
+      "kind": "content",
+      "foot": "PHẦN 5 · MỨC ĐỘ AI",
+      "title": "Ba cấp độ: <em>Rule / Workflow / Agent</em>",
+      "sub": "— Luôn đi từ đơn giản lên, đừng lạm dụng kỹ thuật",
+      "rows": [
+        { "k": "Rule", "text": "Viết được thành quy tắc rõ ràng thì code luôn, <b>không cần AI</b>. Scoring ngân hàng 30–40 rule if vẫn chạy tốt." },
+        { "k": "Workflow", "text": "Chia được thành các bước lớn, có LLM ở vài nút và gate kiểm tra giữa các bước: tuần tự → phân nhánh → song song." },
+        { "k": "Agent", "text": "AI tự lập kế hoạch, tự chia task, tự gọi tool. Chỉ dùng khi ba cách trên đã chạm trần." },
+        { "text": "Anthropic (<i>Building Effective Agents</i>): <b>ba pattern workflow đầu tiên đã đủ cho hầu hết nhu cầu.</b>" },
+        { "text": "Agent thật thì tốn kém và khó kiểm soát — một prompt có thể spawn hơn trăm agent, đốt 4 triệu token." },
+        { "text": "Luồng đơn giản thì sai là debug được; luồng agent phức tạp thì mỗi lỗi là một logic mới." }
+      ]
+    }
+  ],
+  "mockSummary": [
+    { "p": 5, "t": "Làm sản phẩm AI bao gồm trọn phần làm sản phẩm, cộng lớp AI — 70% thành công đến từ con người và vận hành." },
+    { "p": 6, "t": "Kỳ vọng user tăng vọt và chi phí chuyển đổi rẻ đi, nên user rời đi rất nhanh nếu sản phẩm không khác biệt." },
+    { "p": 7, "t": "Đề bài kiểu \"làm AI chatbot support\" còn mơ hồ — dùng Five Whys đào tới điểm đau thật trước khi build." }
+  ]
+}

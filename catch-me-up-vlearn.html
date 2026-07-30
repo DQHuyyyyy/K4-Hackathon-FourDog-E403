@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLearn — Catch Me Up Prototype</title>
+<style>
+  :root{
+    --navy:#1b2a6b; --blue:#2f4fd0; --blue-2:#3d63e4; --blue-soft:#eef2fd; --blue-soft2:#e0e8fb;
+    --ink:#1e2733; --ink-2:#26303c; --muted:#6b7688;
+    --line:#e5e8ef; --line-2:#eef1f7;
+    --bg:#f4f6fb; --paper:#fdfcf7; --paper-line:#efe9d8;
+    --green:#1f8a52; --green-soft:#e7f4ec;
+    --coral:#e0743f; --coral-soft:#fdeee4;
+    --chip:#eef2fd;
+    --shadow:0 10px 34px rgba(27,42,107,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",-apple-system,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+  /* ---------- top header ---------- */
+  .header{background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:10px 18px}
+  .back{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:20px;color:var(--navy)}
+  .brand .mark{width:26px;height:26px;background:linear-gradient(135deg,var(--blue),var(--navy));border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900}
+  .file{display:flex;align-items:center;gap:11px;padding-left:14px;border-left:1px solid var(--line)}
+  .file .ic{width:30px;height:30px;border-radius:8px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:15px}
+  .file .nm{font-weight:800;font-size:15px}
+  .file .sub{font-size:11.5px;color:var(--muted)}
+  .header .right{margin-left:auto;display:flex;gap:8px}
+  .pill-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;font-size:13px;font-weight:700}
+
+  /* ---------- layout: sidebar | stage | tutor ---------- */
+  .main{flex:1;display:flex;overflow:hidden;position:relative}
+
+  /* left sidebar */
+  .side{width:280px;background:#fff;border-right:1px solid var(--line);overflow-y:auto;padding:18px 14px;flex-shrink:0}
+  .side h2{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .side .sh-sub{font-size:11.5px;color:var(--muted);margin:3px 0 14px 26px}
+  .day{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .day-head{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:pointer}
+  .day-head .tri{color:var(--blue);font-size:12px}
+  .day-head .t{font-weight:800;font-size:14px}
+  .day-head .meta{font-size:10.5px;color:var(--muted);margin-top:1px}
+  .badge{margin-left:auto;font-size:9.5px;font-weight:800;letter-spacing:.5px;background:var(--green-soft);color:var(--green);padding:3px 7px;border-radius:6px}
+  .doc{margin:0 10px 10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;cursor:pointer}
+  .doc:hover{border-color:var(--blue)}
+  .doc .dn{font-weight:700;display:flex;align-items:center;gap:6px}
+  .doc .dp{font-size:11px;color:var(--muted);margin-top:2px}
+  .doc.active{border-color:var(--blue);background:var(--blue-soft)}
+  .doc .check{color:var(--blue);margin-left:auto}
+
+  /* stage (PDF viewer area) */
+  .stage{flex:1;position:relative;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;min-width:0}
+  .toolbar{display:flex;align-items:center;gap:10px;padding:10px 16px}
+  .tgroup{display:flex;gap:4px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:4px}
+  .tool{border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink);padding:6px 12px;border-radius:8px;display:flex;align-items:center;gap:6px}
+  .tool.on,.tool:hover{background:var(--blue-soft);color:var(--blue)}
+  .tnote{margin-left:auto;font-size:12px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:9px;padding:6px 12px}
+  .zoom{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:4px 8px;font-size:12px;color:var(--muted)}
+  .zoom button{border:none;background:none;cursor:pointer;font-size:15px;color:var(--muted)}
+  .paperwrap{flex:1;overflow:auto;padding:8px 26px 20px;position:relative}
+  .paper{max-width:820px;margin:0 auto;background:var(--paper);border:1px solid var(--paper-line);border-radius:6px;box-shadow:var(--shadow);min-height:520px;padding:26px 34px;position:relative}
+  .paper-top{display:flex;justify-content:space-between;font-size:11px;color:#b3a988;letter-spacing:.5px}
+  .p-title{font-size:26px;font-weight:800;color:#1f2937;margin:26px 0 4px}
+  .p-title em{color:var(--blue);font-style:normal}
+  .p-sub{font-size:13px;color:#8a8266;font-style:italic;margin-bottom:22px;border-bottom:1px solid var(--paper-line);padding-bottom:14px}
+  .qrow{display:flex;gap:20px;align-items:baseline;padding:16px 4px;border-bottom:1px solid #f0ecdd}
+  .qrow .no{font-size:20px;font-weight:800;color:var(--blue);min-width:38px}
+  .qrow .qt{font-size:16px;color:var(--ink-2)}
+  .qrow .qt b{color:#111}
+  .paper-foot{display:flex;justify-content:space-between;font-size:10.5px;color:#b3a988;letter-spacing:.5px;margin-top:26px;border-top:1px solid var(--paper-line);padding-top:12px}
+  .pager{display:flex;align-items:center;justify-content:center;gap:16px;padding:10px;background:#fff;border-top:1px solid var(--line)}
+  .pager button{width:36px;height:36px;border-radius:99px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--muted);font-size:15px}
+  .pager .pg{font-size:13.5px;color:var(--ink)} .pager .pg b{color:var(--blue)}
+  .presenter-tag{position:absolute;top:14px;right:24px;font-size:11.5px;color:var(--coral);font-weight:700;background:var(--coral-soft);padding:5px 11px;border-radius:99px;display:none;z-index:5;border:1px solid #f3d3c2}
+
+  .demo-ctl{position:absolute;top:66px;left:296px;z-index:20;display:flex;gap:8px}
+  .demo-ctl button{font-size:12px;font-weight:700;border:1px solid var(--line);background:#fff;color:var(--ink);padding:7px 12px;border-radius:9px;cursor:pointer;box-shadow:var(--shadow)}
+  .demo-ctl button:hover{background:var(--blue-soft);color:var(--blue)}
+
+  /* ---------- RIGHT TUTOR SIDEBAR ---------- */
+  .tutor{width:420px;background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;transition:margin-right .3s ease}
+  .tutor.collapsed{margin-right:-420px}
+  /* header */
+  .tutor-head{display:flex;align-items:center;gap:11px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .tutor-head .bot{width:34px;height:34px;border-radius:9px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .tutor-head b{font-size:15px;color:var(--ink);display:block}
+  .tutor-head small{font-size:11.5px;color:var(--muted)}
+  .tutor-head .icons{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .tutor-head .icons button{width:30px;height:30px;border:none;background:none;border-radius:7px;color:var(--muted);cursor:pointer;font-size:15px}
+  .tutor-head .icons button:hover{background:var(--blue-soft);color:var(--blue)}
+  .slide-chip{font-size:11px;font-weight:700;color:var(--blue);background:var(--blue-soft);padding:5px 10px;border-radius:99px;border:1px solid var(--blue-soft2)}
+
+  /* context line */
+  .ctx{padding:10px 16px 6px;font-size:11.5px;color:var(--muted);font-family:"Consolas",monospace}
+  .ctx b{color:var(--ink);font-weight:700}
+
+  /* messages area */
+  .tbody{flex:1;overflow-y:auto;padding:6px 16px 12px;display:flex;flex-direction:column;gap:12px}
+  .msg{max-width:100%;font-size:13.5px;line-height:1.55;color:var(--ink-2)}
+  .msg.bot{background:var(--blue-soft);border-radius:14px 14px 14px 4px;padding:12px 14px;border:1px solid var(--blue-soft2)}
+  .msg.user{background:#f4f6fb;border-radius:14px 14px 4px 14px;padding:11px 14px;align-self:flex-end;max-width:85%}
+  .msg.system{background:transparent;color:var(--muted);font-size:11.5px;text-align:center;padding:2px}
+
+  .alert{background:var(--coral-soft);border:1px solid #f4d4bf;border-radius:12px;padding:13px 14px}
+  .alert .h{font-size:13.5px;font-weight:800;color:var(--coral);display:flex;gap:7px;align-items:center}
+  .alert .b{font-size:12.5px;color:#8a4a2b;margin-top:5px;line-height:1.5}
+  .btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;border-radius:10px;transition:.15s;font-size:13.5px}
+  .btn-coral{background:var(--coral);color:#fff;padding:11px;width:100%}
+  .btn-coral:hover{filter:brightness(.95)}
+  .btn-blue{background:var(--blue);color:#fff;padding:10px;width:100%}
+  .btn-blue:hover{background:var(--navy)}
+  .hint{font-size:11px;color:#9aa3b2;text-align:center}
+  .load{display:flex;flex-direction:column;gap:9px;background:var(--blue-soft);border-radius:14px;padding:14px;border:1px solid var(--blue-soft2)}
+  .load .ln{height:11px;border-radius:6px;background:linear-gradient(90deg,#dbe4f5 25%,#c8d5ef 37%,#dbe4f5 63%);background-size:400% 100%;animation:sh 1.2s infinite}
+  .load .ln:nth-child(2){width:82%}.load .ln:nth-child(3){width:68%}.load .ln:nth-child(4){width:88%}
+  @keyframes sh{0%{background-position:100% 0}100%{background-position:0 0}}
+  .load-note{font-size:12px;color:var(--muted);text-align:center;margin-top:4px}
+  .sum-head{font-size:13.5px;font-weight:800}
+  .sum-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .count{display:inline-flex;gap:6px;font-size:11px;font-weight:700;color:var(--green);background:var(--green-soft);padding:3px 9px;border-radius:99px;margin-top:8px}
+  .bullets{display:flex;flex-direction:column;gap:8px}
+  .bullet{display:flex;gap:9px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:.14s;background:#fff}
+  .bullet:hover{border-color:var(--blue);background:var(--blue-soft)}
+  .bullet .chip{flex-shrink:0;font-size:10.5px;font-weight:800;color:var(--blue);background:var(--chip);padding:3px 7px;border-radius:6px;margin-top:1px}
+  .bullet .txt{font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+  .bullet.seen{opacity:.5}
+
+  /* input bar */
+  .tinput{padding:12px 14px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;background:#fff}
+  .tinput input{flex:1;border:1px solid var(--line);background:#fafbfe;padding:11px 14px;border-radius:99px;font-size:13.5px;color:var(--ink);font-family:inherit;outline:none}
+  .tinput input:focus{border-color:var(--blue);background:#fff}
+  .tinput .send{width:38px;height:38px;border-radius:99px;border:none;background:var(--blue);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .tinput .send:hover{background:var(--navy)}
+
+  /* toggle handle on the tutor edge */
+  .toggle{position:absolute;top:50%;left:-16px;transform:translateY(-50%);width:32px;height:52px;background:#fff;border:1px solid var(--line);border-right:none;border-radius:10px 0 0 10px;box-shadow:-4px 0 12px rgba(20,40,90,.06);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;z-index:10}
+  .toggle:hover{color:var(--blue)}
+
+  .toast{position:fixed;bottom:26px;left:calc(50% - 210px);transform:translateX(-50%) translateY(18px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- header -->
+<div class="header">
+  <button class="back">‹</button>
+  <div class="brand"><span class="mark">V</span>VLearn</div>
+  <div class="file">
+    <div class="ic">📄</div>
+    <div><div class="nm">material_95eb786b4d9e.pdf</div><div class="sub">COMP2010 · Lecture_material_ms203vsq_ob7vqp</div></div>
+  </div>
+  <div class="right"><button class="pill-btn">VI</button><button class="pill-btn">◐</button></div>
+</div>
+
+<div class="main">
+  <!-- left sidebar -->
+  <div class="side">
+    <h2>📚 Học liệu môn học</h2>
+    <div class="sh-sub">Chương, slide và tài liệu đã upload</div>
+    <div class="day">
+      <div class="day-head"><span class="tri">▾</span><div><div class="t">Day01</div><div class="meta">2 TÀI LIỆU · PUBLISHED</div></div></div>
+      <div class="doc"><div class="dn">▶ day01_302.pdf</div><div class="dp">83 trang</div></div>
+      <div class="doc"><div class="dn">▶ material_mrxpq9zu_t8e6xs…</div><div class="dp">32 trang</div></div>
+    </div>
+    <div class="day">
+      <div class="day-head"><span class="tri">▾</span><div><div class="t">Day02</div><div class="meta">1 TÀI LIỆU · PUBLISHED</div></div><span class="badge">STUDYING</span></div>
+      <div class="doc active"><div class="dn">▶ material_95eb786b4d9e… <span class="check">✔</span></div><div class="dp">76 trang</div></div>
+    </div>
+    <div class="day">
+      <div class="day-head"><span class="tri">▾</span><div><div class="t">Day03</div><div class="meta">2 TÀI LIỆU · PUBLISHED</div></div></div>
+      <div class="doc"><div class="dn">▶ day03-tu-chatbot-den-agen…</div><div class="dp">—</div></div>
+    </div>
+  </div>
+
+  <!-- stage -->
+  <div class="stage">
+    <div class="toolbar">
+      <div class="tgroup">
+        <button class="tool on">▷ Đọc</button>
+        <button class="tool">✎ Bút</button>
+        <button class="tool">▭ Highlight</button>
+        <button class="tool">⋯</button>
+      </div>
+      <div class="tnote" id="tnote">Trang 3 · 1 note</div>
+      <div class="zoom"><button>−</button>100%<button>+</button></div>
+    </div>
+
+    <div class="demo-ctl">
+      <button onclick="simulateAway()" id="awayBtn">⏸ Mô phỏng rời đi 3 phút</button>
+      <button onclick="resetDemo()">↺ Reset</button>
+    </div>
+
+    <div class="paperwrap">
+      <div class="presenter-tag" id="presenterTag"></div>
+      <div class="paper">
+        <div class="paper-top"><span id="pTop">Trang 3 / 76</span><span>material_95eb786b4d9e.pdf</span></div>
+        <div id="paperContent"></div>
+        <div class="paper-foot"><span>MỞ ĐẦU · 4 CÂU HỎI</span><span id="pFoot">DAY 02 · 03 / 76</span></div>
+      </div>
+    </div>
+
+    <div class="pager">
+      <button>‹</button><div class="pg">Trang <b id="pgNum">3</b> / 76</div><button>›</button>
+    </div>
+  </div>
+
+  <!-- RIGHT TUTOR SIDEBAR -->
+  <div class="tutor" id="tutor">
+    <button class="toggle" onclick="toggleTutor()" title="Ẩn/hiện VLearn Tutor" id="toggleBtn">›</button>
+
+    <div class="tutor-head">
+      <div class="bot">🤖</div>
+      <div><b>VLearn Tutor</b><small id="tutorState">Trợ lý học theo ngữ cảnh</small></div>
+      <div class="icons">
+        <button title="Lịch sử">⟲</button>
+        <button title="Đoạn hội thoại mới">+</button>
+        <div class="slide-chip" id="slideChip">Trang slide: 3</div>
+      </div>
+    </div>
+
+    <div class="ctx" id="ctxLine">Ngữ cảnh: <b>Slide trang 3</b></div>
+
+    <div class="tbody" id="tbody">
+      <div class="msg bot">Xin chào! Mình là VLearn Tutor. Bạn có thể bôi đen một đoạn trên slide để hỏi, hoặc gửi câu hỏi tự do nhé!</div>
+    </div>
+
+    <div class="tinput">
+      <input type="text" id="chatInput" placeholder="Nhập câu hỏi hoặc bôi đen tài liệu…" onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="send" onclick="sendMsg()">➤</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---- fake lecture pages ----
+  const PAGES = {
+    3:{title:'Bốn câu hỏi <em>trọng tâm</em>', sub:'— Từ xác định bài toán đến quyết định ứng dụng AI',
+       rows:[['01','Bài toán có thực sự cần <b>AI</b> giải quyết?'],['02','Nếu có, giải pháp ở cấp độ nào: <b>Rule, Workflow, hay Agent?</b>'],['03','<b>Problem Statement</b> đã đủ rõ ràng để triển khai?'],['04','Khi nào quyết định: <b>Go, Not Yet, hay No-Go?</b>']]},
+    4:{title:'Câu 1 — <em>Bài toán có cần AI?</em>', sub:'— Đừng dùng AI chỉ vì nó "xịn"',
+       rows:[['','Nếu một vài câu lệnh <b>if-else</b> giải được thì chưa cần AI.'],['','AI xứng đáng khi bài toán <b>mơ hồ, nhiều ngoại lệ</b>, khó liệt kê hết luật.']]},
+    5:{title:'Câu 2 — <em>Rule / Workflow / Agent</em>', sub:'— Chọn đúng cấp độ để không "dùng dao mổ trâu"',
+       rows:[['Rule','Luật cố định, đầu ra đoán trước được.'],['Workflow','Chuỗi bước có AI ở vài chặng, vẫn do người điều phối.'],['Agent','AI tự lập kế hoạch và gọi công cụ để đạt mục tiêu.']]},
+    6:{title:'Câu 3 — <em>Problem Statement</em>', sub:'— Viết rõ trước khi build',
+       rows:[['','Nêu rõ <b>ai</b> gặp vấn đề, ở <b>khoảnh khắc</b> nào, hậu quả ra sao.'],['','Không nhắc tới "AI" trong phần mô tả vấn đề — chỉ mô tả nỗi đau.']]},
+    7:{title:'Câu 4 — <em>Go / Not Yet / No-Go</em>', sub:'— Quyết định dựa trên bằng chứng',
+       rows:[['Go','Có bằng chứng pain thật + lát cắt demo được.'],['Not Yet','Ý tưởng ổn nhưng thiếu dữ liệu chứng minh.'],['No-Go','Không có nỗi đau thật hoặc AI không tạo giá trị rõ.']]}
+  };
+  const SUMMARY = [
+    {p:4, t:'Chỉ dùng AI khi bài toán mơ hồ, nhiều ngoại lệ — if-else giải được thì chưa cần.'},
+    {p:5, t:'Ba cấp độ giải pháp: Rule (luật cố định) → Workflow (người điều phối) → Agent (AI tự lập kế hoạch).'},
+    {p:6, t:'Problem Statement phải nêu rõ ai đau, khoảnh khắc nào, hậu quả — không nhắc chữ "AI".'},
+    {p:7, t:'Quyết định Go / Not Yet / No-Go dựa trên bằng chứng pain thật và lát cắt demo được.'}
+  ];
+
+  const $ = id => document.getElementById(id);
+  let userPage = 3, presenterPage = 3, seen = new Set();
+
+  function renderPage(){
+    const d = PAGES[userPage];
+    const rows = d.rows.map(r =>
+      `<div class="qrow"><div class="no">${r[0]}</div><div class="qt">${r[1]}</div></div>`).join('');
+    $("paperContent").innerHTML =
+      `<div class="p-title">${d.title}</div><div class="p-sub">${d.sub}</div>${rows}`;
+    $("pTop").textContent = "Trang " + userPage + " / 76";
+    $("pFoot").textContent = "DAY 02 · " + String(userPage).padStart(2,'0') + " / 76";
+    $("pgNum").textContent = userPage;
+    $("tnote").textContent = "Trang " + userPage + " · 1 note";
+    $("slideChip").textContent = "Trang slide: " + userPage;
+    $("ctxLine").innerHTML = "Ngữ cảnh: <b>Slide trang " + userPage + "</b>";
+  }
+  function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1500);}
+  function scrollTutorBottom(){ const el=$("tbody"); el.scrollTop=el.scrollHeight; }
+
+  function toggleTutor(){
+    const t = $("tutor");
+    t.classList.toggle("collapsed");
+    $("toggleBtn").textContent = t.classList.contains("collapsed") ? "‹" : "›";
+  }
+
+  function appendMsg(html){
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    $("tbody").appendChild(div.firstElementChild);
+    scrollTutorBottom();
+  }
+
+  function simulateAway(){
+    $("tutorState").textContent="Bạn đang vắng…";
+    $("awayBtn").disabled=true;
+    $("presenterTag").style.display="inline-block";
+    let step=0;
+    const iv=setInterval(()=>{
+      step++; presenterPage=3+step;
+      $("presenterTag").textContent="Giảng viên đang ở trang "+presenterPage;
+      if(step>=4){ clearInterval(iv); onMissed(); }
+    },300);
+  }
+
+  function onMissed(){
+    const missed=presenterPage-userPage, from=userPage+1, to=presenterPage;
+    $("tutorState").textContent="Phát hiện bạn lỡ trang";
+    appendMsg(`<div class="msg system">— Bạn vừa quay lại sau khi vắng 3 phút —</div>`);
+    appendMsg(`<div class="alert">
+      <div class="h">⚠ Bạn đã lỡ ${missed} trang</div>
+      <div class="b">Trong lúc bạn vắng, bài giảng đã đi từ trang ${from} đến ${to}. Bắt kịp ngay thay vì tua lại từng trang?</div>
+    </div>`);
+    appendMsg(`<button class="btn btn-coral" onclick="catchUp(${from},${to})">⚡ Catch me up (${from}–${to})</button>`);
+    toast("VLearn Tutor: bạn đã lỡ "+missed+" trang");
+  }
+
+  function catchUp(from,to){
+    appendMsg(`<div class="msg user">⚡ Catch me up (${from}–${to})</div>`);
+    $("tutorState").textContent="Đang tóm tắt…";
+    appendMsg(`<div class="load">
+      <div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div>
+      <div class="load-note">Đang đọc ${to-from+1} trang bạn đã lỡ…</div>
+    </div>`);
+    const loadEl = $("tbody").lastElementChild;
+    setTimeout(()=>{ loadEl.remove(); showSummary(from,to); },1300);
+  }
+
+  function showSummary(from,to){
+    $("tutorState").textContent="Sẵn sàng";
+    const items=SUMMARY.map(b=>`
+      <div class="bullet" id="b${b.p}" onclick="jumpTo(${b.p})">
+        <span class="chip">Trang ${b.p}</span><span class="txt">${b.t}</span></div>`).join('');
+    appendMsg(`<div class="msg bot">
+      <div class="sum-head">Tóm tắt nhanh ${to-from+1} trang bạn đã lỡ</div>
+      <div class="sum-sub">Trang ${from}–${to} · theo đúng thứ tự</div>
+      <div class="count">✓ Đã tóm tắt ${SUMMARY.length}/${SUMMARY.length} trang</div>
+      <div class="bullets" style="margin-top:10px">${items}</div>
+    </div>`);
+    appendMsg(`<button class="btn btn-blue" onclick="caughtUp(${to})">✓ Đã bắt kịp — tiếp tục học</button>`);
+    appendMsg(`<div class="msg system">Bấm từng ý để nhảy tới đúng trang đó.</div>`);
+  }
+
+  function jumpTo(p){
+    userPage=p; renderPage(); seen.add(p);
+    const el=$("b"+p); if(el) el.classList.add("seen");
+    toast("Đã tới trang "+p);
+  }
+
+  function caughtUp(to){
+    userPage=to; presenterPage=to; renderPage();
+    $("presenterTag").style.display="none";
+    $("tutorState").textContent="Đang theo dõi bài giảng";
+    $("awayBtn").disabled=false;
+    appendMsg(`<div class="msg bot">Đã bắt kịp! Bạn đang ở cùng trang với giảng viên. Mình vẫn chạy nền — cần bắt kịp lần nữa cứ rời đi rồi quay lại nhé.</div>`);
+    toast("Bạn đã bắt kịp bài giảng ✓");
+  }
+
+  function sendMsg(){
+    const v = $("chatInput").value.trim();
+    if(!v) return;
+    appendMsg(`<div class="msg user">${v}</div>`);
+    $("chatInput").value="";
+    setTimeout(()=>{
+      appendMsg(`<div class="msg bot">Đây là bản demo (CP2) nên mình chưa gọi AI thật. Bấm "Mô phỏng rời đi 3 phút" ở trên để xem luồng Catch Me Up nhé!</div>`);
+    }, 500);
+  }
+
+  function resetDemo(){
+    userPage=3; presenterPage=3; seen=new Set();
+    $("awayBtn").disabled=false;
+    $("presenterTag").style.display="none";
+    $("tutorState").textContent="Trợ lý học theo ngữ cảnh";
+    $("tbody").innerHTML = `<div class="msg bot">Xin chào! Mình là VLearn Tutor. Bạn có thể bôi đen một đoạn trên slide để hỏi, hoặc gửi câu hỏi tự do nhé!</div>`;
+    renderPage();
+  }
+
+  renderPage();
+</script>
+</body>
+</html>
