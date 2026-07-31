@@ -242,5 +242,38 @@
     { "p": 5, "t": "Làm sản phẩm AI bao gồm trọn phần làm sản phẩm, cộng lớp AI — 70% thành công đến từ con người và vận hành." },
     { "p": 6, "t": "Kỳ vọng user tăng vọt và chi phí chuyển đổi rẻ đi, nên user rời đi rất nhanh nếu sản phẩm không khác biệt." },
     { "p": 7, "t": "Đề bài kiểu \"làm AI chatbot support\" còn mơ hồ — dùng Five Whys đào tới điểm đau thật trước khi build." }
+  ],
+
+  "mockWrapup": {
+    "takeaways": [
+      { "sec": "PHẦN 1 · BỐI CẢNH", "pages": [5, 6],
+        "t": "Sản phẩm AI khó hơn sản phẩm thường vì phần AI chỉ là một lớp; 70% thành bại nằm ở con người và vận hành, trong khi kỳ vọng user đã tăng vọt." },
+      { "sec": "PHẦN 2 · TÌM VẤN ĐỀ", "pages": [7, 8, 9],
+        "t": "Đề bài ban đầu luôn mơ hồ. Double Diamond bắt phân kỳ để hiểu đúng vấn đề trước khi hội tụ, tránh làm rất giỏi một cái sai." },
+      { "sec": "PHẦN 2 · TÌM VẤN ĐỀ", "pages": [10],
+        "t": "First Principle Thinking: bóc bài toán về các sự thật nền tảng rồi dựng lại, thay vì đi theo cách mọi người vẫn làm." },
+      { "sec": "PHẦN 3 · CÔNG CỤ", "pages": [11, 12],
+        "t": "Phân kỳ để có nhiều lựa chọn, hội tụ bằng ma trận Tác động – Nỗ lực; ưu tiên quick win để tạo niềm tin trước." },
+      { "sec": "PHẦN 4 · PHÁT BIỂU BÀI TOÁN", "pages": [13, 14],
+        "t": "Problem Statement phải nêu rõ ai đau, đau ở đâu, hậu quả gì, và kèm chỉ số thành công đo được — không có số thì không chốt được." },
+      { "sec": "PHẦN 5 · MỨC ĐỘ AI", "pages": [15, 16],
+        "t": "Chọn mức AI thấp nhất mà vẫn giải được: Rule rồi Workflow rồi mới Agent; Anthropic nói ba pattern workflow đầu đã đủ cho hầu hết nhu cầu." }
+    ],
+    "skipped": [
+      { "p": 1, "why": "bìa" },
+      { "p": 2, "why": "giới thiệu giảng viên" },
+      { "p": 3, "why": "trang dẫn nhập" },
+      { "p": 4, "why": "agenda" }
+    ]
+  },
+
+  "mockDeck": [
+    { "p": 5, "q": "Vì sao sản phẩm AI khó hơn sản phẩm thường?", "a": "Vì nó gồm trọn phần làm sản phẩm cộng thêm lớp AI, và 70% thành công đến từ con người và vận hành.", "g": 0.71 },
+    { "p": 9, "q": "Làm đúng cái sai nghĩa là gì?", "a": "Là thực thi rất tốt một bài toán không đáng giải — hỏng ở khâu chọn vấn đề chứ không phải khâu làm.", "g": 0.62 },
+    { "p": 10, "q": "First Principle Thinking bắt đầu từ đâu?", "a": "Từ việc bóc bài toán xuống các sự thật nền tảng không thể chia nhỏ hơn, rồi dựng lại lời giải từ đó.", "g": 0.58 },
+    { "p": 12, "q": "Ưu tiên ô nào trong ma trận Tác động – Nỗ lực?", "a": "Ô tác động cao, nỗ lực thấp — quick win, làm trước để tạo niềm tin.", "g": 0.66 },
+    { "p": 13, "q": "Problem Statement phải trả lời những gì?", "a": "Ai đang đau, đau ở khâu nào, hậu quả ra sao, và thành công được đo bằng chỉ số nào.", "g": 0.69 },
+    { "p": 16, "q": "Phân biệt Workflow với Agent?", "a": "Workflow chia sẵn các bước có gate kiểm tra; Agent tự lập kế hoạch, tự chia task, tự gọi tool.", "g": 0.74 },
+    { "p": 16, "q": "Khi nào mới nên dùng Agent thật?", "a": "Chỉ khi Rule và Workflow đã chạm trần, vì Agent tốn kém và khó kiểm soát.", "g": 0.55 }
   ]
 }

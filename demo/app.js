@@ -12,11 +12,13 @@ const T = {
   vi: { lib: 'Học liệu môn học', libSub: 'Chương, slide và tài liệu đã upload', read: 'Đọc', pen: 'Bút', hl: 'Highlight',
         page: 'Trang', tutorSub: 'Trợ lý học theo ngữ cảnh', chatPh: 'Nhập câu hỏi hoặc bôi đen tài liệu…',
         away: '⏸ Mô phỏng rời đi 3 phút', stuck: '⏱ Mô phỏng dừng lâu', reset: '↺ Reset',
-        askSel: 'Hỏi Tutor về đoạn này', hlSel: 'Highlight' },
+        askSel: 'Hỏi Tutor về đoạn này', hlSel: 'Highlight',
+        wrap: 'Tổng kết buổi học', deckT: 'Bộ thẻ ôn cuối buổi' },
   en: { lib: 'Course materials', libSub: 'Chapters, slides and uploaded files', read: 'Read', pen: 'Pen', hl: 'Highlight',
         page: 'Page', tutorSub: 'Context-aware study assistant', chatPh: 'Ask a question or select text…',
         away: '⏸ Simulate 3-min absence', stuck: '⏱ Simulate long dwell', reset: '↺ Reset',
-        askSel: 'Ask Tutor about this', hlSel: 'Highlight' },
+        askSel: 'Ask Tutor about this', hlSel: 'Highlight',
+        wrap: 'Wrap up the session', deckT: 'End-of-session review deck' },
 };
 let LANG = 'vi';
 function applyLang() {
@@ -50,6 +52,14 @@ let dwellMs = 0;                    // thời gian đã ở trang hiện tại (
 let armed = false;                  // badge "?" đang hiện
 let awayRunning = false;            // đang chạy mô phỏng rời đi → không tính dwell
 const struggled = new Set();        // trang đã hỏi rồi, mỗi trang chỉ 1 lần/phiên
+
+/* tổng kết cuối buổi + bộ thẻ ôn */
+let wrapData = null;                // kết quả tổng kết gần nhất (để xuất .md và dựng thẻ)
+let wrapping = false;               // đang gọi /api/wrapup
+let wrapInvited = false;            // đã mời tổng kết khi đọc tới trang cuối, chỉ mời 1 lần/phiên
+let deck = [];                      // bộ thẻ đang ôn
+let deckI = 0;                      // thẻ hiện tại
+let deckShaky = [];                 // thẻ bị đánh "chưa chắc" → trang cần quay lại
 
 const ann = (n) => (A[n] ||= { ops: [] });
 
@@ -156,6 +166,7 @@ function setCur(n) {
   $('slideChip').textContent = `${T[LANG].page} slide: ${n}`;
   $('ctxLine').innerHTML = `Ngữ cảnh: <b>Slide trang ${n}</b>`;
   if (single) document.querySelectorAll('.page').forEach((p) => p.classList.toggle('cur', Number(p.dataset.page) === n));
+  if (!awayRunning && n === DOC.pages.at(-1).n) inviteWrap();   // đọc hết tài liệu → mời tổng kết
 }
 const renderPagerLabel = () => { $('pgNow').textContent = cur; };
 function renderNote() {
@@ -458,8 +469,10 @@ function resetDwell() { dwellMs = 0; disarm(); }
 
 /** Bấm badge "?" → bot hỏi + 3 chip khó khăn do AI sinh theo nội dung trang. */
 async function askStruggle() {
-  if (busy) return;
   const page = cur;
+  // Không dùng cờ `busy` chung với chat: hỏi struggle không đụng tài nguyên của sendChat,
+  // và một lần `busy` sót lại từ lượt chat trước từng làm badge bấm mãi không phản ứng.
+  if (struggled.has(page)) { disarm(); return toast(`Trang ${page} đã hỏi rồi — cuộn sang trang khác nhé`); }
   const mins = Math.max(1, Math.round(dwellMs / 60000));
   struggled.add(page);
   disarm();
@@ -606,6 +619,285 @@ function caughtUp(to) {
   toast('Bạn đã bắt kịp bài giảng ✓');
 }
 
+/* ─────────────── Tổng kết cuối buổi ───────────────
+   Cùng quyết định AI với Catch Me Up ("ý chính hay trang phụ?"), chỉ đổi phạm vi:
+   thay vì 4 trang bị lỡ thì đọc cả buổi, và gom các trang cùng một ý thành một mạch. */
+
+/** Học viên đọc tới trang cuối → mời tổng kết, nhưng vẫn im lặng chờ bấm (push tín hiệu, pull nội dung). */
+function inviteWrap() {
+  if (wrapInvited || wrapData) return;
+  wrapInvited = true;
+  $('btnWrap').classList.add('invite');
+  push(el(`
+    <div class="struggle">
+      <div class="h">Bạn vừa đọc hết tài liệu <span class="dw">${DOC.pages.length} trang</span></div>
+      <div class="b">Muốn mình đọc lại cả buổi, chọn ra ý chính và gom thành một bản tổng kết ngắn để ôn không?</div>
+    </div>`));
+  const b = el(`<button class="btn btn-blue"><svg><use href="#i-wrap"/></svg> Tổng kết cả buổi</button>`);
+  b.onclick = () => { b.remove(); wrapUp(); };
+  push(b);
+  toast('VLearn Tutor: đã đọc hết tài liệu — tổng kết lại nhé?');
+}
+
+async function wrapUp() {
+  if (wrapping) return toast('Đang tổng kết, đợi chút…');
+  wrapping = true;
+  $('btnWrap').disabled = true;
+  $('btnWrap').classList.remove('invite');
+  if ($('tutor').classList.contains('collapsed')) $('hTutor').click();
+
+  const n = DOC.pages.length;
+  push(el(`<div class="msg user">📋 Tổng kết buổi học (${n} trang)</div>`));
+  setState('Đang đọc lại cả buổi…');
+  const load = push(el(`
+    <div class="load">
+      <div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div>
+      <div class="note">AI đang đọc ${n} trang, bỏ trang phụ và gom các trang cùng ý…</div>
+    </div>`));
+
+  try {
+    const res = await fetch('/api/wrapup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: DOC.pages[0].n, to: DOC.pages.at(-1).n }),
+    });
+    const data = await res.json();
+    load.remove();
+    if (data.error) return errBlock(data.error, () => showWrapup(DOC.mockWrapup.takeaways, DOC.mockWrapup.skipped, { mock: true }));
+    showWrapup(data.takeaways, data.skipped || [], data.meta || {});
+  } catch (e) {
+    load.remove();
+    errBlock({ code: 'network', message: 'Không kết nối được server: ' + e.message },
+      () => showWrapup(DOC.mockWrapup.takeaways, DOC.mockWrapup.skipped, { mock: true }));
+  } finally {
+    wrapping = false;
+    $('btnWrap').disabled = false;
+  }
+}
+
+function showWrapup(takeaways, skipped, meta) {
+  setState('Sẵn sàng');
+  wrapData = { takeaways, skipped, meta };
+  const total = DOC.pages.length;
+  const picked = [...new Set(takeaways.flatMap((k) => k.pages))].length;
+
+  const node = el(`
+    <div class="msg bot">
+      <div class="sum-head">Tổng kết ${DOC.doc.day} — ${takeaways.length} ý chính</div>
+      <div class="sum-sub">Đã đọc ${total} trang · gom theo mạch bài, không liệt kê từng trang</div>
+      <div class="pills">
+        <span class="pill ok">✓ Ý chính: ${picked}/${total} trang</span>
+        ${skipped.length ? `<span class="pill skip">Bỏ trang phụ: ${skipped.map((s) => s.p).join(', ')}</span>` : ''}
+        ${meta.mock ? `<span class="pill mock">MOCK — chưa gọi AI</span>`
+          : `<span class="pill meta">${esc(meta.model || '')} · ${((meta.latency_ms || 0) / 1000).toFixed(1)}s${meta.total_tokens ? ' · ' + meta.total_tokens + ' tok' : ''}</span>`}
+      </div>
+      <div class="takes"></div>
+    </div>`);
+
+  const list = node.querySelector('.takes');
+  let lastSec = null;
+  takeaways.forEach((k) => {
+    if (k.sec && k.sec !== lastSec) { list.appendChild(el(`<div class="take-sec">${esc(k.sec)}</div>`)); lastSec = k.sec; }
+    const unsure = /chưa chắc/i.test(k.t);
+    const item = el(`
+      <button class="take ${unsure ? 'unsure' : ''}">
+        <span class="tx">${esc(k.t)}</span>
+        <span class="ps">${k.pages.map((p) => `<span class="chip">Trang ${p}</span>`).join('')}</span>
+      </button>`);
+    item.onclick = () => { item.classList.add('seen'); goTo(k.pages[0]); flash(k.pages[0]); };
+    list.appendChild(item);
+  });
+  if (!takeaways.length) list.appendChild(el(`<div class="msg sys">AI không rút được ý chính nào từ tài liệu này.</div>`));
+
+  const acts = el(`<div class="sum-acts"></div>`);
+  if (takeaways.some((k) => !/^phần này chưa chắc/i.test(k.t))) {
+    const bDeck = el(`<button class="btn-sm btn-teal"><svg><use href="#i-deck"/></svg> Ôn lại bằng thẻ lật</button>`);
+    bDeck.onclick = () => openDeck();
+    acts.appendChild(bDeck);
+  }
+  const bDl = el(`<button class="btn-sm btn-ghost"><svg><use href="#i-dl"/></svg> Tải bản tổng kết (.md)</button>`);
+  bDl.onclick = exportWrapup;
+  acts.appendChild(bDl);
+  node.appendChild(acts);
+
+  push(node);
+  push(el(`<div class="msg sys">Bấm từng ý để nhảy tới trang gốc của ý đó.</div>`));
+  if (skipped.length) push(el(`<div class="msg sys">Trang bị bỏ: ${skipped.map((s) => `${s.p} (${esc(s.why)})`).join(' · ')}</div>`));
+}
+
+/** Xuất bản tổng kết ra .md để mang đi đọc lúc di chuyển — đúng khoảnh khắc "tối phải ôn lại". */
+function exportWrapup() {
+  if (!wrapData) return toast('Chưa có bản tổng kết nào');
+  const { takeaways, skipped } = wrapData;
+  const lines = [
+    `# Tổng kết ${DOC.doc.day} — ${DOC.doc.file}`,
+    `${DOC.doc.course} · ${DOC.doc.label}`,
+    `Xuất lúc ${new Date().toLocaleString('vi-VN')} · ${takeaways.length} ý chính / ${DOC.pages.length} trang`,
+    '',
+  ];
+  let lastSec = null;
+  takeaways.forEach((k) => {
+    if (k.sec && k.sec !== lastSec) { lines.push(`## ${k.sec}`, ''); lastSec = k.sec; }
+    lines.push(`- ${k.t}  \n  _(trang ${k.pages.join(', ')})_`, '');
+  });
+  if (skipped.length) lines.push('', '---', '', `Trang phụ đã bỏ: ${skipped.map((s) => `${s.p} (${s.why})`).join(' · ')}`);
+  if (deck.length) {
+    lines.push('', '## Thẻ ôn', '');
+    deck.forEach((c, i) => lines.push(`${i + 1}. **${c.q}**  \n   ${c.a} _(trang ${c.p})_`));
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vlearn-tong-ket.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Đã tải vlearn-tong-ket.md');
+}
+
+/* ─────────────── Bộ thẻ ôn ───────────────
+   Thẻ sinh TỪ các ý chính đã chốt ở trên, không đọc lại tài liệu độc lập.
+   Server đã loại thẻ không truy được về trang nguồn trước khi trả về. */
+
+async function openDeck() {
+  $('deck').hidden = false;
+  // Tổng kết đang là dữ liệu mẫu thì bộ thẻ cũng dùng mẫu luôn — đừng bắt người pitch
+  // bấm thêm một vòng gọi API chắc chắn hỏng rồi mới hiện nút MOCK.
+  if (wrapData?.meta?.mock) {
+    $('deckBar').style.width = '0%';
+    return startDeck(DOC.mockDeck, { unsure: 0, ungrounded: 0 }, { mock: true });
+  }
+  $('deckCount').textContent = '…';
+  $('deckSub').textContent = 'Đang dựng thẻ từ các ý chính…';
+  $('deckBar').style.width = '0%';
+  $('deckBody').innerHTML = `<div class="load"><div class="ln"></div><div class="ln"></div><div class="ln"></div>
+    <div class="note">AI đang biến ${wrapData ? wrapData.takeaways.length : ''} ý chính thành thẻ ôn…</div></div>`;
+
+  try {
+    const res = await fetch('/api/deck', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: DOC.pages[0].n, to: DOC.pages.at(-1).n }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      $('deckBody').innerHTML = '';
+      $('deckSub').textContent = 'Không dựng được thẻ';
+      const box = el(`<div class="err"><div class="h"><svg><use href="#i-warn"/></svg> Không gọi được AI (${esc(data.error.code || '')})</div><div class="b">${esc(data.error.message)}</div></div>`);
+      $('deckBody').appendChild(box);
+      const b = el(`<button class="btn-sm btn-ghost">Dùng bộ thẻ mẫu (MOCK)</button>`);
+      b.onclick = () => startDeck(DOC.mockDeck, { unsure: 0, ungrounded: 0 }, { mock: true });
+      $('deckBody').appendChild(b);
+      return;
+    }
+    startDeck(data.cards, data.dropped || {}, data.meta || {});
+  } catch (e) {
+    $('deckBody').innerHTML = '';
+    $('deckSub').textContent = 'Không kết nối được server';
+    const b = el(`<button class="btn-sm btn-ghost">Dùng bộ thẻ mẫu (MOCK)</button>`);
+    b.onclick = () => startDeck(DOC.mockDeck, { unsure: 0, ungrounded: 0 }, { mock: true });
+    $('deckBody').appendChild(b);
+    void e;
+  }
+}
+
+function startDeck(cards, dropped, meta) {
+  deck = cards || [];
+  deckI = 0;
+  deckShaky = [];
+
+  // Nói thẳng cái đã bị loại: ý Tutor tự nhận "chưa chắc", và thẻ không truy được về trang nguồn.
+  const drops = [];
+  if (dropped.unsure) drops.push(`${dropped.unsure} ý chưa chắc`);
+  if (dropped.ungrounded) drops.push(`${dropped.ungrounded} thẻ không truy được nguồn`);
+
+  if (!deck.length) {
+    $('deckCount').textContent = '0';
+    $('deckSub').textContent = 'Không có thẻ nào';
+    $('deckBody').innerHTML = `<div class="deck-empty">Không thẻ nào truy được chắc chắn về trang nguồn${drops.length ? ` (đã loại ${drops.join(' · ')})` : ''}, nên mình không tạo thẻ.<br><br>
+      Thà thiếu thẻ còn hơn để bạn học thuộc một câu trả lời mình không chắc.</div>`;
+    return;
+  }
+  $('deckSub').textContent = meta.mock ? 'Bộ thẻ mẫu (MOCK)'
+    : drops.length ? `Đã loại ${drops.join(' · ')}` : 'Lật thẻ để tự kiểm tra';
+  renderCard();
+}
+
+function renderCard() {
+  const c = deck[deckI];
+  $('deckCount').textContent = `${deckI + 1} / ${deck.length}`;
+  $('deckBar').style.width = `${(deckI / deck.length) * 100}%`;
+  $('deckBody').innerHTML = '';
+
+  const card = el(`
+    <div class="card">
+      <div class="q">${esc(c.q)}</div>
+      <div class="flip-hint">bấm để lật xem đáp án</div>
+    </div>`);
+  card.onclick = () => { if (!card.classList.contains('open')) flipCard(card, c); };
+  $('deckBody').appendChild(card);
+}
+
+function flipCard(card, c) {
+  card.classList.add('open');
+  card.querySelector('.flip-hint').remove();
+  card.appendChild(el(`<div class="a">${esc(c.a)}</div>`));
+  card.appendChild(el(`<div class="src"><span class="pill skip">Nguồn: trang ${c.p}</span></div>`));
+
+  const grade = el(`
+    <div class="grade">
+      <button class="g-ok">✓ Nhớ rồi</button>
+      <button class="g-no">↺ Chưa chắc</button>
+    </div>`);
+  grade.querySelector('.g-ok').onclick = () => nextCard(true);
+  grade.querySelector('.g-no').onclick = () => nextCard(false);
+  $('deckBody').appendChild(grade);
+}
+
+function nextCard(ok) {
+  if (!ok) deckShaky.push(deck[deckI]);
+  deckI++;
+  if (deckI >= deck.length) return deckDone();
+  renderCard();
+}
+
+/** Hết bộ thẻ: chốt lại đúng những trang cần quay lại — vòng khép kín của cả tính năng. */
+function deckDone() {
+  const good = deck.length - deckShaky.length;
+  $('deckCount').textContent = `${deck.length} / ${deck.length}`;
+  $('deckBar').style.width = '100%';
+  $('deckSub').textContent = 'Đã xong bộ thẻ';
+  $('deckBody').innerHTML = '';
+
+  const box = el(`
+    <div class="deck-done">
+      <div class="score">${good}/${deck.length}</div>
+      <div class="lbl">thẻ bạn thấy đã nhớ chắc</div>
+      <div class="note">${deckShaky.length
+        ? `Còn ${deckShaky.length} chỗ bạn đánh dấu chưa chắc. Bấm để quay lại đúng trang đó:`
+        : 'Bạn nắm chắc cả buổi rồi. Bấm ✕ để quay lại hỏi Tutor bất cứ lúc nào.'}</div>
+    </div>`);
+  $('deckBody').appendChild(box);
+
+  const pages = [...new Set(deckShaky.map((c) => c.p))].sort((a, b) => a - b);
+  if (pages.length) {
+    const list = el(`<div class="takes"></div>`);
+    pages.forEach((p) => {
+      const qs = deckShaky.filter((c) => c.p === p).map((c) => c.q).join(' · ');
+      const item = el(`<button class="take"><span class="tx">${esc(qs)}</span><span class="ps"><span class="chip">Trang ${p}</span></span></button>`);
+      item.onclick = () => { closeDeck(); goTo(p); flash(p); };
+      list.appendChild(item);
+    });
+    $('deckBody').appendChild(list);
+  }
+
+  const again = el(`<button class="btn-sm btn-ghost">↺ Ôn lại từ đầu</button>`);
+  again.onclick = () => { deckI = 0; deckShaky = []; $('deckSub').textContent = 'Lật thẻ để tự kiểm tra'; renderCard(); };
+  $('deckBody').appendChild(again);
+
+  push(el(`<div class="msg sys">Đã ôn xong ${deck.length} thẻ — nhớ chắc ${good}, cần xem lại ${deckShaky.length}.</div>`));
+}
+
+function closeDeck() { $('deck').hidden = true; }
+
 /* ─────────────── hội thoại: mới / lịch sử ─────────────── */
 function newChat() {
   if ($('tbody').children.length > 1) {
@@ -677,6 +969,11 @@ function resetDemo() {
   $('btnAway').disabled = false;
   awayRunning = false;
   struggled.clear(); resetDwell();
+  wrapData = null; wrapping = false; wrapInvited = false;
+  deck = []; deckI = 0; deckShaky = [];
+  closeDeck();
+  $('btnWrap').disabled = false;
+  $('btnWrap').classList.remove('invite');
   chatMsgs = []; sessions = []; dropQuote();
   greet(); setState(T[LANG].tutorSub);
   setZoom(1);
@@ -754,8 +1051,12 @@ function wire() {
   $('btnHist').onclick = (e) => { e.stopPropagation(); toggleHist(); };
   document.addEventListener('click', (e) => { if (!e.target.closest('.tutor-head')) $('histPop').hidden = true; });
 
-  // badge "?" — phát hiện dừng lâu
-  $('qBadgeHead').onclick = (e) => { e.stopPropagation(); askStruggle(); };
+  // badge "?" — phát hiện dừng lâu.
+  // Cả hai badge đều bắt click ngay trên chính nó và chặn nổi bọt, nên click không bao giờ
+  // rơi xuống nút cha (#hTutor) và biến thành thao tác thu/mở sidebar.
+  [$('qBadgeHead'), $('qBadgeTab')].forEach((b) => {
+    b.onclick = (e) => { e.stopPropagation(); e.preventDefault(); askStruggle(); };
+  });
   setInterval(tickDwell, 1000);
   // Alt-tab ngắn thì chỉ tạm dừng (tickDwell tự bỏ qua khi document.hidden);
   // rời đi lâu thì coi như mạch đọc đã đứt, tính lại từ đầu.
@@ -764,6 +1065,10 @@ function wire() {
     if (document.hidden) hiddenAt = Date.now();
     else if (hiddenAt && Date.now() - hiddenAt > 30_000) resetDwell();
   });
+
+  // tổng kết cuối buổi + bộ thẻ ôn
+  $('btnWrap').onclick = wrapUp;
+  $('deckClose').onclick = closeDeck;
 
   // demo
   $('btnAway').onclick = simulateAway;

@@ -44,6 +44,9 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
+/* Mọi khối bật/tắt bằng thuộc tính hidden (.sel-pop, .quote-bar, .deck…) đều có display:flex,
+   mà rule của tác giả luôn thắng UA stylesheet — không có dòng này thì hidden vô tác dụng. */
+[hidden]{display:none !important}
 html,body{height:100%}
 body{
   font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
@@ -306,6 +309,7 @@ canvas.ink{position:absolute;inset:0;border-radius:10px;pointer-events:none;z-in
   font-size:11px;font-weight:900;line-height:1;
   display:none;align-items:center;justify-content:center;padding:0;
   box-shadow:0 2px 6px rgba(224,52,44,.5);
+  cursor:pointer;                       /* span, không phải button — phải nói rõ là bấm được */
 }
 .q-badge.on{display:flex;animation:qpulse 1.7s ease-in-out infinite}
 @keyframes qpulse{
@@ -410,6 +414,100 @@ canvas.ink{position:absolute;inset:0;border-radius:10px;pointer-events:none;z-in
 .tinput .send{width:38px;height:38px;border-radius:99px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
 .tinput .send:hover{filter:brightness(1.1)}
 .tinput .send:disabled{opacity:.45;cursor:not-allowed}
+
+/* ══════════════ TỔNG KẾT CUỐI BUỔI + BỘ THẺ ÔN ══════════════ */
+
+/* hàng hành động nhanh dưới dòng ngữ cảnh */
+.tacts{display:flex;gap:7px;padding:8px 16px 0}
+.tacts button{
+  display:flex;align-items:center;gap:7px;font-size:12.2px;font-weight:700;color:var(--ink-2);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:7px 13px;transition:.15s;
+}
+.tacts button:hover{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.tacts button:disabled{opacity:.5;cursor:not-allowed}
+.tacts svg{width:15px;height:15px}
+/* khi học viên đọc tới trang cuối: nút tự nhấp nháy mời, nhưng vẫn im lặng chờ bấm */
+.tacts button.invite{border-color:var(--brand);background:var(--brand-soft);color:var(--brand);animation:invite 2.2s ease-in-out infinite}
+@keyframes invite{0%,100%{box-shadow:0 0 0 0 rgba(63,107,239,0)}50%{box-shadow:0 0 0 4px rgba(63,107,239,.16)}}
+
+/* bong bóng tổng kết */
+.take-sec{
+  font-size:9.5px;font-weight:800;letter-spacing:.08em;color:var(--teal);
+  font-family:var(--mono);margin:12px 0 6px;
+}
+.take-sec:first-child{margin-top:9px}
+.takes{display:flex;flex-direction:column;margin-top:2px}
+.take{
+  display:flex;flex-direction:column;gap:7px;width:100%;text-align:left;
+  padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);transition:.15s;
+}
+.take:hover{border-color:var(--brand);background:var(--brand-soft)}
+.take .tx{font-size:12.9px;line-height:1.55;color:var(--ink-2)}
+.take .ps{display:flex;flex-wrap:wrap;gap:5px}
+.take .chip{
+  font-size:10px;font-weight:800;color:var(--brand);background:var(--brand-soft);
+  border:1px solid var(--brand-line);padding:3px 7px;border-radius:7px;
+}
+.take:hover .chip{background:var(--surface)}
+.take.seen{opacity:.5}
+.take.unsure{border-color:var(--coral-line)}
+.take.unsure .chip{color:var(--coral);background:var(--coral-soft);border-color:var(--coral-line)}
+.sum-acts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.btn-sm{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px;border-radius:11px;font-size:12.8px;font-weight:750;transition:.15s;
+}
+.btn-sm svg{width:16px;height:16px}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-teal:hover{filter:brightness(1.08)}
+
+/* ─── bộ thẻ ôn: chiếm trọn khung Tutor ─── */
+.tutor{position:relative}
+.deck{position:absolute;inset:0;z-index:45;background:var(--surface);display:flex;flex-direction:column}
+.deck-head{display:flex;align-items:center;gap:11px;padding:13px 15px;border-bottom:1px solid var(--line)}
+.deck-head .ic{
+  width:34px;height:34px;border-radius:11px;background:var(--brand-soft);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.deck-head .ic svg{width:20px;height:20px}
+.deck-head .who{flex:1;min-width:0}
+.deck-head .who b{font-size:15px;letter-spacing:-.01em;display:block;line-height:1.3}
+.deck-head .who small{font-size:11.5px;color:var(--muted);display:block}
+.dh-n{font-size:11.5px;font-weight:800;color:var(--muted);font-family:var(--mono);flex-shrink:0}
+.deck-bar{height:3px;background:var(--line-2);flex-shrink:0}
+.deck-bar i{display:block;height:100%;width:0;background:var(--brand);transition:width .3s ease}
+.deck-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:11px;min-height:0}
+
+.card{
+  /* cao tự nhiên, không kéo giãn hết khung — thẻ dài ngắn khác nhau vẫn cân đối */
+  flex:0 0 auto;min-height:210px;display:flex;flex-direction:column;justify-content:center;gap:13px;
+  text-align:center;padding:24px 20px;border-radius:16px;
+  border:1px solid var(--brand-line);background:var(--surface);box-shadow:var(--shadow-1);transition:.18s;
+}
+.card:hover{box-shadow:var(--shadow-2)}
+.card .q{font-size:16.5px;font-weight:750;line-height:1.45;color:var(--ink)}
+.card .flip-hint{font-size:11.5px;color:var(--faint)}
+.card .a{
+  font-size:13.6px;line-height:1.62;color:var(--ink-2);
+  border-top:1px dashed var(--line);padding-top:15px;
+}
+.card .src{display:flex;justify-content:center;gap:6px}
+.card.open{border-color:var(--brand)}
+.grade{display:flex;gap:8px}
+.grade button{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px;border-radius:11px;font-size:12.8px;font-weight:750;border:1px solid transparent;transition:.15s;
+}
+.g-ok{color:var(--green);background:var(--green-soft)}
+.g-ok:hover{filter:brightness(.96)}
+.g-no{color:var(--coral);background:var(--coral-soft);border-color:var(--coral-line)}
+.g-no:hover{filter:brightness(.97)}
+
+.deck-done{text-align:center;padding:6px 2px}
+.deck-done .score{font-size:31px;font-weight:800;color:var(--brand);letter-spacing:-.02em}
+.deck-done .lbl{font-size:12.5px;color:var(--muted);margin-top:2px}
+.deck-done .note{font-size:12.8px;color:var(--ink-2);line-height:1.6;margin-top:12px}
+.deck-empty{font-size:12.8px;color:var(--ink-2);line-height:1.6;text-align:center;padding:18px 6px}
 
 /* toast */
 .toast{

@@ -38,6 +38,8 @@ demo/
 | `POST /api/chat` | SSE stream | Chat tự do, inject nội dung trang đang xem + đoạn bôi đen |
 | `POST /api/catchup` | JSON | Nhận `{from,to}`, trả `{bullets, skipped, meta}` theo JSON Schema |
 | `POST /api/hints` | JSON | Nhận `{page}`, trả 3 chỗ dễ tắc nhất trong trang theo JSON Schema |
+| `POST /api/wrapup` | JSON | Nhận `{from,to}` (mặc định cả tài liệu), trả `{takeaways, skipped, meta}` |
+| `POST /api/deck` | JSON | Nhận `{from,to}`, trả `{cards, dropped, meta}` — thẻ ôn dựng từ takeaway đã chốt |
 | `GET /api/health` | JSON | Kiểm tra key/model đã nạp chưa |
 
 ## Quyết định AI (đây là chỗ ăn điểm Eval)
@@ -47,6 +49,23 @@ demo/
 Đây là quyết định *đo được*: với một đoạn slide có ground truth, so `picked` của AI với đáp án → ra precision/recall.
 
 Rào an toàn theo Canvas dòng 6: trang không đọc được nội dung thì câu tóm tắt **phải** bắt đầu bằng `"Phần này chưa chắc:"`, không được đoán. UI tô chip màu coral cho những bullet đó.
+
+### `/api/wrapup` — cùng quyết định, phạm vi rộng hơn
+
+Tổng kết cuối buổi hỏi model **đúng câu hỏi đó** ("ý chính hay trang phụ?"), chỉ khác là trên cả tài liệu thay vì 4–5 trang bị lỡ. Vì cùng loại quyết định nên **dùng chung golden set với `catchup`**, không phát sinh bộ eval thứ hai.
+
+Khác biệt duy nhất nằm ở đầu ra: `catchup` trả một bullet cho mỗi trang; `wrapup` **gom** các trang cùng nói về một ý thành một `takeaway` với `pages: [7,8,9]` — đó mới là "tổng hợp", và nó nối lại mạch xuyên trang.
+
+Server lọc bỏ mọi trang model trả về mà không có thật trong khoảng, nên nút nhảy trang không bao giờ chết.
+
+### `/api/deck` — biến đổi có ràng buộc, không phải quyết định mới
+
+Thẻ ôn **không** đọc lại tài liệu độc lập mà sinh từ chính các takeaway đã chốt (lấy trong cache RAM của server, không nhận dữ liệu client gửi lên). Hai rào chắn chạy tự động trước khi thẻ tới tay học viên:
+
+1. Takeaway nào bắt đầu bằng `"Phần này chưa chắc:"` thì **không được** biến thành thẻ — học viên sẽ học thuộc đúng thứ trên thẻ, nên thà thiếu còn hơn thuộc sai.
+2. Mỗi thẻ bị chấm `groundedScore(đáp án, nội dung trang nguồn)` — tỉ lệ cặp-hai-âm-tiết của đáp án xuất hiện trong trang. Dưới `0.34` là model đã diễn giải ra ngoài slide → loại.
+
+`dropped: {unsure, ungrounded}` trả về UI để nói thẳng đã bỏ bao nhiêu thẻ và vì sao.
 
 ## Log eval → `eval/runs.jsonl`
 
@@ -59,6 +78,15 @@ Mỗi lượt gọi AI ghi một dòng JSON:
 ```
 
 `picked` + `skipped` là dữ liệu thô để dựng golden set và tính precision/recall cho R4. Route `hints` log thêm mảng `hints` để đối chiếu. Lỗi cũng được log (`error_code`).
+
+`wrapup` log cùng cặp `picked`/`skipped` như `catchup` (nên chấm được bằng chung một golden set), thêm `takeaways` và `unsure`. `deck` log số đo tự động của riêng nó:
+
+```json
+{"route":"deck","cards_returned":5,"cards_kept":3,"dropped_unsure":1,
+ "dropped_ungrounded":2,"grounded_ratio":0.6,"grounded_scores":[1,1,1,0.08,0]}
+```
+
+`grounded_ratio` là tỉ lệ thẻ truy được về trang nguồn — con số này server tự tính, không cần chấm tay.
 
 > **Lưu ý cho R4:** route `/api/hints` là **quyết định AI thứ hai** ("chỗ nào trong trang dễ gây tắc nhất"). Nếu đưa nó vào phần chấm điểm thì cần golden set riêng; nếu chỉ muốn đo một quyết định thì giữ nó ở mức tính năng phụ trợ và chỉ đo `catchup`.
 
@@ -96,9 +124,34 @@ Mỗi lượt gọi AI ghi một dòng JSON:
 5. `✓ Đã bắt kịp` → về trạng thái theo dõi bình thường
 6. `↺ Reset` để chạy lại khi pitch
 
+**Tổng kết cuối buổi + bộ thẻ ôn**
+1. Nút `Tổng kết buổi học` nằm ngay dưới dòng ngữ cảnh trong Tutor. Đọc tới trang cuối thì nút **tự nhấp nháy mời** và Tutor đẩy một card gợi ý — vẫn im lặng chờ bấm, giống badge `?`
+2. Bấm → gọi `/api/wrapup` → bong bóng tổng kết: các ý gom theo phần (`PHẦN 2 · TÌM VẤN ĐỀ`), mỗi ý kèm **nhiều chip số trang**, chip "Bỏ trang phụ", badge model/latency/token
+3. Bấm một ý → nhảy tới trang gốc, ý đó mờ đi. Ý "chưa chắc" viền coral, không được đưa vào thẻ ôn
+4. `Ôn lại bằng thẻ lật` → `/api/deck` → bộ thẻ chiếm trọn khung Tutor: mặt trước câu hỏi, bấm lật ra đáp án + chip trang nguồn, tự chấm `✓ Nhớ rồi` / `↺ Chưa chắc`
+5. Hết bộ thẻ → điểm tự đánh giá (`2/3`) + danh sách **đúng những trang cần quay lại**, bấm là đóng thẻ và nhảy về trang đó
+6. `Tải bản tổng kết (.md)` xuất file gồm cả takeaway lẫn thẻ ôn, để đọc lúc di chuyển
+
 ## Khi AI lỗi
 
 Server không bao giờ trả 500 trắng. Nó phân loại lỗi thành `quota` / `auth` / `nokey` / `model` / `ratelimit` / `network`, UI hiện banner đỏ kèm cách sửa cụ thể, và thêm nút **"Dùng dữ liệu mẫu (MOCK)"** để buổi pitch chạy tiếp được. Bullet MOCK luôn có chip cam `MOCK — chưa gọi AI` để không nhầm là AI thật.
+
+Tổng kết và bộ thẻ có `mockWrapup` / `mockDeck` trong `pages.json`. Nếu bản tổng kết đang là MOCK thì bộ thẻ dùng MOCK luôn, không gọi API một vòng chắc chắn hỏng rồi mới hiện nút.
+
+## Test không đốt quota
+
+Dựng một mock OpenAI local trả JSON/SSE giả rồi trỏ server sang nó:
+
+```bash
+OPENAI_BASE=http://localhost:5199/v1 node --env-file=.env demo/server.mjs
+```
+
+Phần giao diện kiểm bằng Chrome headless qua CDP (`WebSocket` có sẵn từ Node 22, không cần cài gì):
+
+```bash
+chrome --headless=new --remote-debugging-port=9333 about:blank
+# rồi lái trang bằng Runtime.evaluate: bấm nút thật, đọc DOM thật
+```
 
 ## Nội dung slide
 
