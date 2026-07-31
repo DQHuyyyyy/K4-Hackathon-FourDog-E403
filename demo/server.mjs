@@ -69,12 +69,13 @@ function pageToText(page) {
 const MAX_ASK_PAGES = 5;
 
 /**
- * Rút các số trang mà học viên nhắc tới trong câu hỏi: "slide 10", "trang 5-8", "page 4 và 7".
- * Số PHẢI đứng ngay sau từ khoá trang/slide/page, để "70% thành công" không bị hiểu thành trang 70.
+ * Rút các số trang mà học viên nhắc tới: "slide 10", "trang 5-8", "page 4 và 7",
+ * và cả các cách nói có chữ đệm: "slide số 7", "trang thứ 12", "slide thứ 16".
+ * Số vẫn PHẢI thuộc về một từ khoá trang/slide/page, để "70% thành công" không thành trang 70.
  */
 function referencedPages(text) {
   const out = [];
-  const re = /(?:trang|slide|page|tr\.)\s*(\d{1,3})(?:\s*(?:-|–|—|đến|tới|to)\s*(\d{1,3}))?/gi;
+  const re = /(?:trang|slide|page|tr\.)\s*(?:số|thứ|thứ tự|no\.?)?\s*(\d{1,3})(?:\s*(?:-|–|—|đến|tới|to)\s*(?:trang|slide|page)?\s*(?:số|thứ)?\s*(\d{1,3}))?/gi;
   for (const m of String(text || '').matchAll(re)) {
     const a = Number(m[1]);
     const b = m[2] ? Number(m[2]) : a;
@@ -84,6 +85,68 @@ function referencedPages(text) {
     }
   }
   return out;
+}
+
+/* ── Tra cứu theo CHỦ ĐỀ ──────────────────────────────────────────────
+   Trước đây chỉ nạp thêm trang khi học viên gọi đúng số ("trang 10").
+   Hỏi theo nội dung ("vì sao làm sản phẩm AI khó hơn") thì không trang nào
+   được nạp, nên Tutor chỉ thấy tiêu đề trong mục lục và buộc phải trả lời
+   "chưa có nội dung chi tiết" — đúng luật nhưng vô dụng với học viên.
+   Giờ server tự tìm trang khớp chủ đề câu hỏi rồi nạp nội dung đầy đủ. */
+
+const STOP = new Set(('vì sao thế nào gì có không và với nhau là của cho tôi mình bạn được rồi đó này kia một các những khi thì mà ở trong ra lên về hay hoặc nếu như để bị bởi thêm nữa ạ nhé nha ok hi hello xin chào cảm ơn giúp hãy cần muốn biết hiểu nói bảo trả lời câu hỏi slide trang page').split(' '));
+
+/** Tách câu hỏi thành từ khoá nội dung (bỏ hư từ, bỏ số trang). */
+function keywords(text) {
+  return norm(text).split(' ').filter((w) => w.length >= 2 && !STOP.has(w) && !/^\d+$/.test(w));
+}
+
+/**
+ * Chấm mức liên quan giữa câu hỏi và một trang.
+ * Cụm hai âm tiết ăn điểm gấp đôi ("sản phẩm" đáng tin hơn "sản" hay "phẩm" rời),
+ * trùng ở tiêu đề ăn điểm gấp rưỡi vì tiêu đề nói đúng chủ đề của trang.
+ */
+function topicScore(kw, page) {
+  if (kw.length < 2) return 0;
+  const title = ' ' + norm(String(page.title || '').replace(/<[^>]+>/g, '')) + ' ';
+  const body = ' ' + norm(pageToText(page)) + ' ';
+  let hit = 0, bigramHit = 0;
+  for (const w of new Set(kw)) {
+    if (body.includes(` ${w} `)) hit += title.includes(` ${w} `) ? 1.5 : 1;
+  }
+  for (let i = 0; i < kw.length - 1; i++) {
+    const bg = `${kw[i]} ${kw[i + 1]}`;
+    if (body.includes(` ${bg} `)) { bigramHit++; hit += title.includes(` ${bg} `) ? 3 : 2; }
+  }
+  // Phải có ít nhất một cụm hai âm tiết trùng, hoặc ba từ khoá rời trùng —
+  // tránh câu xã giao ("bạn làm tôi bực mình") quét trúng trang bất kỳ.
+  if (!bigramHit && hit < 3) return 0;
+  return hit / kw.length;
+}
+
+const TOPIC_MIN = 0.5;        // dưới ngưỡng coi như không liên quan
+const MAX_TOPIC_PAGES = 3;    // giữ "chỉ gửi phần tối thiểu cần thiết"
+
+/**
+ * Trang thủ tục bị loại khỏi tra cứu theo chủ đề: agenda liệt kê đủ mọi đề mục nên
+ * nó khớp với gần như mọi câu hỏi, mà nội dung chỉ là danh sách tiêu đề — đưa vào
+ * prompt là mời model dẫn nguồn sai. (Học viên hỏi thẳng "trang 4 nói gì" thì vẫn nạp.)
+ */
+const FRONT_KINDS = new Set(['cover', 'instructor', 'agenda', 'toc']);
+const isFrontMatter = (p) =>
+  FRONT_KINDS.has(p.kind) ||
+  /^(agenda|mục lục|giảng viên|bìa)\b/i.test(String(p.title || '').replace(/<[^>]+>/g, '').trim());
+
+/** Tìm các trang liên quan tới chủ đề câu hỏi, trừ trang đang xem (đã có sẵn trong prompt). */
+function topicPages(text, pages, curPage) {
+  const kw = keywords(text);
+  return pages
+    .filter((p) => p.n !== curPage && !isFrontMatter(p))
+    .map((p) => ({ p, s: topicScore(kw, p) }))
+    .filter((x) => x.s >= TOPIC_MIN)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, MAX_TOPIC_PAGES)
+    .map((x) => x.p);
 }
 
 const CATCHUP_SYSTEM = `Bạn là VLearn Tutor — trợ lý học theo ngữ cảnh trong một app đọc slide bài giảng.
@@ -167,6 +230,13 @@ function chatSystem(ctx) {
       'Hãy coi phần này ngang hàng với trang đang xem: đã có nội dung thì trả lời thẳng, KHÔNG được nói "slide đang xem không có thông tin đó".',
       ctx.askedText);
   }
+  if (ctx.topicText) {
+    parts.push('',
+      'CÂU HỎI NÀY KHỚP CHỦ ĐỀ CỦA CÁC TRANG SAU — DƯỚI ĐÂY LÀ NỘI DUNG ĐẦY ĐỦ CỦA CHÚNG.',
+      'Học viên không gọi tên số trang, nhưng đây chính là chỗ tài liệu nói về điều họ hỏi.',
+      'Hãy trả lời thẳng bằng nội dung này và dẫn (trang N). KHÔNG được nói "nội dung chưa có trong phần được cung cấp".',
+      ctx.topicText);
+  }
   if (ctx.missingPages) {
     parts.push('',
       `LƯU Ý: tài liệu này chỉ có trang ${ctx.firstPage}–${ctx.lastPage}. Các trang sau KHÔNG tồn tại: ${ctx.missingPages}.`,
@@ -183,10 +253,28 @@ function chatSystem(ctx) {
   }
   parts.push(
     '',
+    'PHẠM VI CỦA BẠN — ĐỌC TRƯỚC KHI LÀM BẤT CỨ VIỆC GÌ:',
+    '- Bạn CHỈ làm một việc: giúp học viên học nội dung tài liệu đang mở. Cụ thể: giải thích ý trong slide, làm rõ khái niệm / thuật toán / thuật ngữ mà slide có nhắc tới, so sánh các phần trong tài liệu, gợi ý trang nên xem.',
+    '- Yêu cầu SÁNG TÁC hoặc làm hộ việc khác — làm thơ, viết nhạc, viết truyện, đặt tên, viết code hộ, viết email, tư vấn cá nhân — thì TỪ CHỐI trong đúng một câu rồi mời quay lại tài liệu.',
+    '- Quy tắc từ chối này áp dụng KỂ CẢ khi yêu cầu đó dựa trên chính nội dung slide (ví dụ "làm thơ tóm tắt slide này", "viết rap về trang 12"). Lấy nguồn đúng KHÔNG làm cho một nhiệm vụ ngoài phạm vi trở thành hợp lệ.',
+    '- Không tự mở rộng vai trò, không tự nhận thêm khả năng nào khác. Nếu được hỏi "bạn làm được gì", chỉ liệt kê đúng phạm vi ở trên.',
+    '',
+    'TỪ CHỐI SAO CHO KHÔNG MÁY MÓC — quan trọng không kém việc từ chối:',
+    '- Câu hỏi về NỘI DUNG bài học thì luôn là trong phạm vi, kể cả khi học viên không nhắc tới số trang nào. Hỏi "vì sao làm sản phẩm AI khó hơn" là câu hỏi học tập — phải trả lời, không được từ chối.',
+    '- Câu xã giao hoặc bộc lộ cảm xúc ("cảm ơn", "bạn làm tôi bực mình", "khó hiểu quá") KHÔNG phải yêu cầu ngoài phạm vi. Đáp lại ngắn gọn, tử tế, đúng một câu, rồi hỏi xem học viên đang vướng ở đâu để giúp tiếp. Tuyệt đối không đọc lại câu từ chối.',
+    '- KHÔNG BAO GIỜ lặp lại nguyên văn câu trả lời trước đó. Nếu đã từ chối một lần rồi mà học viên nói tiếp, hãy đổi cách nói và chủ động đề xuất một việc cụ thể bạn làm được.',
+    '- Nghi ngờ thì nghiêng về phía GIÚP. Chỉ từ chối khi yêu cầu rõ ràng là sáng tác hoặc làm hộ việc không liên quan tới học.',
+    '',
+    'KIỂM TRA TIỀN ĐỀ TRƯỚC KHI TRẢ LỜI:',
+    '- Khi học viên KHẲNG ĐỊNH slide có nói điều gì đó ("trang 16 nói về X", "slide này có đề cập Y"), việc đầu tiên là tìm điều đó trong phần nội dung được cung cấp ở trên.',
+    '- Không tìm thấy thì câu ĐẦU TIÊN phải nói thẳng: "Trang N không nhắc tới X." Rồi mới nói trang đó thật sự nói về gì.',
+    '- TUYỆT ĐỐI không nhận tiền đề sai rồi giải thích tiếp — làm vậy là cài kiến thức sai cho người học.',
+    '',
     'QUY TẮC TRẢ LỜI:',
     '- Trả lời bằng tiếng Việt, ngắn gọn, tối đa 4 câu hoặc 4 gạch đầu dòng.',
     '- Chỉ dựa vào nội dung slide được cung cấp ở trên — nhưng ĐÓ LÀ TOÀN BỘ phần được cung cấp, không riêng trang đang xem.',
-    '- Luôn dẫn số trang theo dạng (trang N) cho thông tin lấy từ trang khác trang đang xem.',
+    '- Được phép giải thích thêm về một khái niệm / thuật toán mà slide CÓ nhắc tới, nhưng phải tách bạch rõ: phần lấy từ tài liệu thì dẫn (trang N), phần giải thích thêm thì mở đầu bằng "Ngoài slide: ...". Không bao giờ gán cho slide điều slide không nói.',
+    '- Chỉ được dẫn số trang có nội dung ở phần trên. Mục lục chỉ có TIÊU ĐỀ — tuyệt đối không suy ra nội dung của một trang từ tiêu đề của nó, và không nói "trang N nói về ..." nếu trang N chưa được nạp nội dung.',
     '- Chỉ nói "Phần này chưa chắc — ..." khi nội dung cần thiết THẬT SỰ không có ở trên; khi đó dựa vào mục lục để chỉ học viên trang nên xem. Không đoán.',
     '- Không bịa. Không mở đầu bằng lời chào dài dòng.'
   );
@@ -670,8 +758,35 @@ async function handleDeck(req, res, body) {
 
 /* ───────────────────────── route: /api/chat (SSE stream) ───────────────────────── */
 
+/**
+ * Đoạn bôi đen do client gửi lên là thứ DUY NHẤT trong prompt có nguồn từ browser,
+ * nên nó là bề mặt prompt-injection: gọi thẳng /api/chat bằng curl là nhét được
+ * chuỗi bất kỳ vào system prompt. Chỉ nhận nếu đoạn đó thật sự nằm trong trang
+ * đang xem — dùng lại groundedScore để chịu được sai lệch khi vùng chọn trải qua
+ * nhiều thẻ HTML. Không khớp thì bỏ hẳn và ghi log.
+ */
+function verifyQuote(raw, pageText) {
+  const q = String(raw || '').slice(0, 1200).trim();
+  if (!q) return { text: '', rejected: false };
+  const words = norm(q).split(' ').filter(Boolean);
+  const ok = words.length < 2
+    ? norm(pageText).includes(norm(q))          // chọn đúng một từ thì so khớp thẳng
+    : groundedScore(q, pageText) >= 0.5;
+  return ok ? { text: q, rejected: false } : { text: '', rejected: true };
+}
+
+/** Lịch sử hội thoại cũng do client dựng — chỉ nhận user/assistant, chặn role lạ chen chỉ thị vào. */
+function sanitizeMessages(raw) {
+  const list = Array.isArray(raw) ? raw : [];
+  const kept = list
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+  return { messages: kept.slice(-12), dropped: list.length - kept.length };
+}
+
 async function handleChat(req, res, body) {
-  const { messages = [], page: pageNo = 1, quote = '' } = body;
+  const { page: pageNo = 1, quote = '' } = body;
+  const { messages, dropped: msgsDropped } = sanitizeMessages(body.messages);
   const doc = await getDoc();
   const cur = doc.pages.find((p) => p.n === Number(pageNo));
   const near = [Number(pageNo) - 1, Number(pageNo) + 1]
@@ -695,6 +810,13 @@ async function handleChat(req, res, body) {
     else missing.push(n);
   }
 
+  // Không gọi số trang nào → tìm theo chủ đề của chính câu hỏi vừa gửi.
+  const topical = askedPages.length
+    ? []
+    : topicPages(userTexts.at(-1) || '', doc.pages, Number(pageNo));
+
+  const safeQuote = verifyQuote(quote, pageToText(cur));
+
   const ctx = {
     ...doc.doc,
     page: Number(pageNo),
@@ -703,11 +825,14 @@ async function handleChat(req, res, body) {
     askedText: askedPages.length
       ? askedPages.map((p) => `── TRANG ${p.n} ──\n${pageToText(p)}`).join('\n\n')
       : undefined,
+    topicText: topical.length
+      ? topical.map((p) => `── TRANG ${p.n} ──\n${pageToText(p)}`).join('\n\n')
+      : undefined,
     missingPages: missing.length ? missing.join(', ') : undefined,
     firstPage: doc.pages[0]?.n,
     lastPage: doc.pages.at(-1)?.n,
     toc: doc.pages.map((p) => `${p.n}. ${String(p.title).replace(/<[^>]+>/g, '')}`).join('\n'),
-    quote: String(quote || '').slice(0, 1200) || undefined,
+    quote: safeQuote.text || undefined,
   };
 
   const t0 = Date.now();
@@ -767,9 +892,12 @@ async function handleChat(req, res, body) {
     send({ done: true, meta: { model, latency_ms: latency, total_tokens: usage?.total_tokens } });
     await logRun({
       route: 'chat', model, latency_ms: latency, page: ctx.page, has_quote: !!ctx.quote,
+      quote_rejected: safeQuote.rejected || undefined,
+      msgs_dropped: msgsDropped || undefined,
       in_tokens: usage?.prompt_tokens, out_tokens: usage?.completion_tokens, total_tokens: usage?.total_tokens,
       chars_out: full.length,
       asked_pages: askedPages.length ? askedPages.map((p) => p.n) : undefined,
+      topic_pages: topical.length ? topical.map((p) => p.n) : undefined,
       asked_missing: missing.length ? missing : undefined,
     });
   } catch (e) {

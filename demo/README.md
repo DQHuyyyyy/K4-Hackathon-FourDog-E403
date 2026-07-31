@@ -103,7 +103,13 @@ Mỗi lượt gọi AI ghi một dòng JSON:
 
 **Tutor**
 - Chat streaming thật, hiện badge `model · latency · tokens` dưới mỗi câu trả lời
-- **Hỏi được trang ở xa trang đang xem.** `referencedPages()` rút số trang từ chính câu hỏi ("slide 10 nói gì", "trang 8 và 12 khác nhau chỗ nào", "tóm tắt trang 7-9") rồi server nạp nội dung đầy đủ đúng những trang đó từ `pages.json` — client không quyết định được text nào vào prompt. Trần 5 trang/lượt. Số phải đứng sau `trang`/`slide`/`page`/`tr.` nên "70% thành công" không thành trang 70. Hỏi trang không tồn tại thì prompt nói thẳng là tài liệu không có, không cho đoán
+- **Hỏi được trang ở xa trang đang xem.** `referencedPages()` rút số trang từ chính câu hỏi ("slide 10 nói gì", "trang 8 và 12 khác nhau chỗ nào", "tóm tắt trang 7-9") rồi server nạp nội dung đầy đủ đúng những trang đó từ `pages.json` — client không quyết định được text nào vào prompt. Trần 5 trang/lượt. Số phải thuộc về từ khoá `trang`/`slide`/`page`/`tr.` nên "70% thành công" không thành trang 70 — nhưng **nhận cả chữ đệm**: `slide số 7`, `trang thứ 12`, `từ trang số 5 đến trang số 8` (sửa 31/07, trước đó những cách nói này bị bỏ sót hoàn toàn). Hỏi trang không tồn tại thì prompt nói thẳng là tài liệu không có, không cho đoán
+- **Tra cứu theo chủ đề** (thêm 31/07): hỏi theo nội dung mà không gọi số trang ("vì sao làm sản phẩm AI khó hơn", "Double Diamond là gì") → `topicPages()` chấm độ khớp giữa từ khoá câu hỏi và từng trang, nạp tối đa 3 trang liên quan nhất
+  - Cụm hai âm tiết ăn điểm gấp đôi từ rời; trùng ở tiêu đề ăn thêm điểm — "sản phẩm" đáng tin hơn "sản" hay "phẩm" đứng riêng
+  - Phải có ≥1 cụm hai âm tiết trùng hoặc ≥3 từ khoá trùng, nên câu xã giao ("cảm ơn bạn nhé", "bạn làm tôi bực mình") không quét trúng trang nào
+  - **Loại trang thủ tục** (bìa · giới thiệu giảng viên · agenda · mục lục) khỏi tra cứu chủ đề: agenda liệt kê đủ mọi đề mục nên nó khớp với gần như mọi câu hỏi, mà nội dung chỉ là danh sách tiêu đề. Hỏi thẳng "trang 4 nói gì" thì vẫn nạp bình thường
+  - Log `topic_pages` vào `runs.jsonl`
+- **Bảo vệ prompt** (thêm 31/07): đoạn bôi đen do client gửi lên được đối chiếu với nội dung trang thật (`verifyQuote`), không khớp thì bỏ và ghi `quote_rejected`; lịch sử hội thoại chỉ nhận `user`/`assistant`, chặn `role` giả chèn chỉ thị
 - `+` mở hội thoại mới, `⟲` mở lại hội thoại cũ
 - Tay nắm phải thu/mở Tutor; khi thu thì thành tab icon bot ở rìa phải
 
