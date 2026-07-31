@@ -31,12 +31,12 @@ demo/
 └── server.mjs    static server + proxy OpenAI + ghi log eval
 ```
 
-**API key không bao giờ xuống browser.** Browser gọi `/api/chat` và `/api/catchup`; server tự dựng prompt từ `pages.json` (không tin nội dung client gửi lên) rồi gọi OpenAI.
+**API key không bao giờ xuống browser.** Browser gọi `/api/chat` và `/api/wrapup`; server tự dựng prompt từ `pages.json` (không tin nội dung client gửi lên) rồi gọi OpenAI.
 
 | Route | Kiểu | Việc |
 |---|---|---|
-| `POST /api/chat` | SSE stream | Chat tự do, inject nội dung trang đang xem + đoạn bôi đen |
-| `POST /api/catchup` | JSON | Nhận `{from,to}`, trả `{bullets, skipped, meta}` theo JSON Schema |
+| `POST /api/chat` | SSE stream | Chat tự do. Inject nội dung trang đang xem + đoạn bôi đen + nội dung đầy đủ các trang được nhắc trong câu hỏi + mục lục tài liệu |
+| `POST /api/catchup` | JSON | Nhận `{from,to}`, trả `{bullets, skipped, meta}` theo JSON Schema. ⚠️ **Không còn UI nào gọi** từ 31/07 (Catch Me Up đã gỡ) — giữ lại để chạy lại được bằng chứng `catchup` trong `runs.jsonl` |
 | `POST /api/hints` | JSON | Nhận `{page}`, trả 3 chỗ dễ tắc nhất trong trang theo JSON Schema |
 | `POST /api/wrapup` | JSON | Nhận `{from,to}` (mặc định cả tài liệu), trả `{takeaways, skipped, meta}` |
 | `POST /api/deck` | JSON | Nhận `{from,to}`, trả `{cards, dropped, meta}` — thẻ ôn dựng từ takeaway đã chốt |
@@ -44,17 +44,15 @@ demo/
 
 ## Quyết định AI (đây là chỗ ăn điểm Eval)
 
-`/api/catchup` **không** chỉ tóm tắt. Nó buộc model ra quyết định cho từng trang: **ý chính** hay **trang phụ** (bìa, agenda, trang chuyển tiếp). Chỉ trang ý chính mới được tóm tắt; trang phụ trả về trong `skipped` kèm lý do.
+`/api/wrapup` **không** chỉ tóm tắt. Nó buộc model ra quyết định cho từng trang: **ý chính** hay **trang phụ** (bìa, agenda, trang chuyển tiếp). Chỉ trang ý chính mới vào tổng kết; trang phụ trả về trong `skipped` kèm lý do.
 
-Đây là quyết định *đo được*: với một đoạn slide có ground truth, so `picked` của AI với đáp án → ra precision/recall.
+Đây là quyết định *đo được*: với tài liệu có ground truth, so `picked` của AI với đáp án → ra precision/recall.
 
-Rào an toàn theo Canvas dòng 6: trang không đọc được nội dung thì câu tóm tắt **phải** bắt đầu bằng `"Phần này chưa chắc:"`, không được đoán. UI tô chip màu coral cho những bullet đó.
+Rào an toàn theo Canvas dòng 6: trang không đọc được nội dung thì câu tóm tắt **phải** bắt đầu bằng `"Phần này chưa chắc:"`, không được đoán. UI tô viền coral cho những ý đó và **không** cho chúng thành thẻ ôn.
 
-### `/api/wrapup` — cùng quyết định, phạm vi rộng hơn
+Đầu ra **gom** các trang cùng nói về một ý thành một `takeaway` với `pages: [7,8,9]` — đó mới là "tổng hợp", và nó nối lại mạch xuyên trang thay vì liệt kê mỗi trang một dòng.
 
-Tổng kết cuối buổi hỏi model **đúng câu hỏi đó** ("ý chính hay trang phụ?"), chỉ khác là trên cả tài liệu thay vì 4–5 trang bị lỡ. Vì cùng loại quyết định nên **dùng chung golden set với `catchup`**, không phát sinh bộ eval thứ hai.
-
-Khác biệt duy nhất nằm ở đầu ra: `catchup` trả một bullet cho mỗi trang; `wrapup` **gom** các trang cùng nói về một ý thành một `takeaway` với `pages: [7,8,9]` — đó mới là "tổng hợp", và nó nối lại mạch xuyên trang.
+`/api/catchup` (không còn UI) hỏi cùng câu hỏi đó trên 4–5 trang, nên **chấm chung một golden set** nếu muốn thêm điểm đo.
 
 Server lọc bỏ mọi trang model trả về mà không có thật trong khoảng, nên nút nhảy trang không bao giờ chết.
 
@@ -105,6 +103,7 @@ Mỗi lượt gọi AI ghi một dòng JSON:
 
 **Tutor**
 - Chat streaming thật, hiện badge `model · latency · tokens` dưới mỗi câu trả lời
+- **Hỏi được trang ở xa trang đang xem.** `referencedPages()` rút số trang từ chính câu hỏi ("slide 10 nói gì", "trang 8 và 12 khác nhau chỗ nào", "tóm tắt trang 7-9") rồi server nạp nội dung đầy đủ đúng những trang đó từ `pages.json` — client không quyết định được text nào vào prompt. Trần 5 trang/lượt. Số phải đứng sau `trang`/`slide`/`page`/`tr.` nên "70% thành công" không thành trang 70. Hỏi trang không tồn tại thì prompt nói thẳng là tài liệu không có, không cho đoán
 - `+` mở hội thoại mới, `⟲` mở lại hội thoại cũ
 - Tay nắm phải thu/mở Tutor; khi thu thì thành tab icon bot ở rìa phải
 
@@ -112,21 +111,15 @@ Mỗi lượt gọi AI ghi một dòng JSON:
 - Ở cùng một trang liên tục **60 giây** → hiện badge `?` đỏ nhấp nháy ở icon bot (cả trong header Tutor và trên tab bot khi Tutor đang thu)
 - Bot **không nói gì** cho tới khi bấm — push tín hiệu, pull nội dung
 - Bấm `?` → gọi `/api/hints`, AI đọc trang và sinh **3 chỗ dễ tắc nhất** dạng chip bấm được; bấm chip là gửi thành câu hỏi thật
-- Đồng hồ reset khi đổi trang; **tạm dừng** khi tab bị ẩn (alt-tab > 30s thì tính lại) và khi đang chạy mô phỏng rời đi — tránh vừa "lỡ trang" vừa "dừng lâu" cùng lúc
+- Đồng hồ reset khi đổi trang; **tạm dừng** khi tab bị ẩn (alt-tab > 30s thì tính lại)
 - Mỗi trang chỉ hỏi **1 lần mỗi phiên**, không quấy rầy
 - Nút demo `⏱ Mô phỏng dừng lâu` cho hiện badge tức thì khi pitch
 
-**Catch Me Up** (lát cắt chính)
-1. Bấm `⏸ Mô phỏng rời đi 3 phút` → giảng viên đi từ trang hiện tại lên +4, badge coral hiện trang giảng viên
-2. Tutor đẩy alert "Bạn đã lỡ 4 trang" + nút `⚡ Catch me up (4–7)`
-3. Bấm → gọi `/api/catchup` thật → bullet kèm chip số trang, chip trang phụ bị bỏ, badge model/latency/token
-4. Bấm bullet → nhảy tới trang đó, trang nháy viền xanh, bullet mờ đi
-5. `✓ Đã bắt kịp` → về trạng thái theo dõi bình thường
-6. `↺ Reset` để chạy lại khi pitch
+> **Đã gỡ 31/07:** luồng **Catch Me Up** (nút `⏸ Mô phỏng rời đi 3 phút` → "Bạn đã lỡ N trang" → `/api/catchup`) không còn trong prototype. Badge `model · giây · token` dưới mỗi câu trả lời cũng đã bỏ — số liệu vẫn ghi đủ vào `eval/runs.jsonl`.
 
-**Tổng kết cuối buổi + bộ thẻ ôn**
+**Tổng kết cuối buổi + bộ thẻ ôn** (lát cắt chính)
 1. Nút `Tổng kết buổi học` nằm ngay dưới dòng ngữ cảnh trong Tutor. Đọc tới trang cuối thì nút **tự nhấp nháy mời** và Tutor đẩy một card gợi ý — vẫn im lặng chờ bấm, giống badge `?`
-2. Bấm → gọi `/api/wrapup` → bong bóng tổng kết: các ý gom theo phần (`PHẦN 2 · TÌM VẤN ĐỀ`), mỗi ý kèm **nhiều chip số trang**, chip "Bỏ trang phụ", badge model/latency/token
+2. Bấm → gọi `/api/wrapup` → bong bóng tổng kết: các ý gom theo phần (`PHẦN 2 · TÌM VẤN ĐỀ`), mỗi ý kèm **nhiều chip số trang**, chip `✓ Ý chính: 7/16 trang` và chip "Bỏ trang phụ"
 3. Bấm một ý → nhảy tới trang gốc, ý đó mờ đi. Ý "chưa chắc" viền coral, không được đưa vào thẻ ôn
 4. `Ôn lại bằng thẻ lật` → `/api/deck` → bộ thẻ chiếm trọn khung Tutor: mặt trước câu hỏi, bấm lật ra đáp án + chip trang nguồn, tự chấm `✓ Nhớ rồi` / `↺ Chưa chắc`
 5. Hết bộ thẻ → điểm tự đánh giá (`2/3`) + danh sách **đúng những trang cần quay lại**, bấm là đóng thẻ và nhảy về trang đó

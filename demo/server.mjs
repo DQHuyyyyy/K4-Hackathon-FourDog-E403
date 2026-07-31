@@ -65,6 +65,27 @@ function pageToText(page) {
   return lines.join('\n');
 }
 
+/** Trần số trang được nạp thêm vào một câu hỏi — giữ "chỉ gửi phần tối thiểu cần thiết" (Slide 11). */
+const MAX_ASK_PAGES = 5;
+
+/**
+ * Rút các số trang mà học viên nhắc tới trong câu hỏi: "slide 10", "trang 5-8", "page 4 và 7".
+ * Số PHẢI đứng ngay sau từ khoá trang/slide/page, để "70% thành công" không bị hiểu thành trang 70.
+ */
+function referencedPages(text) {
+  const out = [];
+  const re = /(?:trang|slide|page|tr\.)\s*(\d{1,3})(?:\s*(?:-|–|—|đến|tới|to)\s*(\d{1,3}))?/gi;
+  for (const m of String(text || '').matchAll(re)) {
+    const a = Number(m[1]);
+    const b = m[2] ? Number(m[2]) : a;
+    for (let n = Math.min(a, b); n <= Math.max(a, b); n++) {
+      if (!out.includes(n)) out.push(n);
+      if (out.length >= 20) return out;          // chặn "trang 1-999" làm phình prompt
+    }
+  }
+  return out;
+}
+
 const CATCHUP_SYSTEM = `Bạn là VLearn Tutor — trợ lý học theo ngữ cảnh trong một app đọc slide bài giảng.
 
 Học viên vừa quay lại sau khi bị phân tâm và đã lỡ một số trang slide. Việc của bạn KHÔNG phải là tóm tắt mọi trang, mà là ra một QUYẾT ĐỊNH cho từng trang:
@@ -140,6 +161,22 @@ function chatSystem(ctx) {
   if (ctx.neighbors) {
     parts.push('', 'NGỮ CẢNH CÁC TRANG LÂN CẬN (chỉ để tham chiếu):', ctx.neighbors);
   }
+  if (ctx.askedText) {
+    parts.push('',
+      'HỌC VIÊN CÓ NHẮC TỚI TRANG KHÁC — DƯỚI ĐÂY LÀ NỘI DUNG ĐẦY ĐỦ CỦA CÁC TRANG ĐÓ.',
+      'Hãy coi phần này ngang hàng với trang đang xem: đã có nội dung thì trả lời thẳng, KHÔNG được nói "slide đang xem không có thông tin đó".',
+      ctx.askedText);
+  }
+  if (ctx.missingPages) {
+    parts.push('',
+      `LƯU Ý: tài liệu này chỉ có trang ${ctx.firstPage}–${ctx.lastPage}. Các trang sau KHÔNG tồn tại: ${ctx.missingPages}.`,
+      'Nói thẳng với học viên là tài liệu không có trang đó. Tuyệt đối không đoán nội dung của chúng.');
+  }
+  if (ctx.toc) {
+    parts.push('',
+      'MỤC LỤC CẢ TÀI LIỆU (chỉ tiêu đề — dùng để chỉ đường "xem trang N", KHÔNG được coi là nội dung chi tiết):',
+      ctx.toc);
+  }
   if (ctx.quote) {
     parts.push('', `HỌC VIÊN ĐANG BÔI ĐEN ĐOẠN NÀY trên trang ${ctx.page}:`, `"""${ctx.quote}"""`,
       'Hãy trả lời tập trung vào đoạn được bôi đen.');
@@ -148,9 +185,9 @@ function chatSystem(ctx) {
     '',
     'QUY TẮC TRẢ LỜI:',
     '- Trả lời bằng tiếng Việt, ngắn gọn, tối đa 4 câu hoặc 4 gạch đầu dòng.',
-    '- Chỉ dựa vào nội dung slide được cung cấp ở trên.',
-    '- Khi có thể, dẫn số trang theo dạng (trang N).',
-    '- Nếu slide không có thông tin để trả lời, nói rõ "Phần này chưa chắc — slide đang xem không có thông tin đó" rồi mới gợi ý học viên xem trang nào.',
+    '- Chỉ dựa vào nội dung slide được cung cấp ở trên — nhưng ĐÓ LÀ TOÀN BỘ phần được cung cấp, không riêng trang đang xem.',
+    '- Luôn dẫn số trang theo dạng (trang N) cho thông tin lấy từ trang khác trang đang xem.',
+    '- Chỉ nói "Phần này chưa chắc — ..." khi nội dung cần thiết THẬT SỰ không có ở trên; khi đó dựa vào mục lục để chỉ học viên trang nên xem. Không đoán.',
     '- Không bịa. Không mở đầu bằng lời chào dài dòng.'
   );
   return parts.filter((l) => l !== undefined).join('\n');
@@ -643,11 +680,33 @@ async function handleChat(req, res, body) {
     .map((p) => `[trang ${p.n}] ${String(p.title).replace(/<[^>]+>/g, '')}`)
     .join('\n');
 
+  // Học viên hỏi về trang xa trang đang xem → nạp thêm nội dung ĐÚNG những trang đó.
+  // Số trang lấy từ chính câu hỏi, nhưng nội dung luôn tra từ pages.json ở server —
+  // client không bao giờ quyết định được text nào đi vào prompt.
+  // Quét cả câu hỏi trước đó để câu hỏi nối ("còn trang 10 thì sao?" → "vì sao vậy?") không mất ngữ cảnh.
+  const userTexts = messages.filter((m) => m.role === 'user').slice(-2).map((m) => m.content);
+  const asked = referencedPages(userTexts.join('\n')).filter((n) => n !== Number(pageNo));
+
+  const askedPages = [];
+  const missing = [];
+  for (const n of asked) {
+    const p = doc.pages.find((x) => x.n === n);
+    if (p) { if (askedPages.length < MAX_ASK_PAGES) askedPages.push(p); }
+    else missing.push(n);
+  }
+
   const ctx = {
     ...doc.doc,
     page: Number(pageNo),
     pageText: pageToText(cur),
     neighbors: near || undefined,
+    askedText: askedPages.length
+      ? askedPages.map((p) => `── TRANG ${p.n} ──\n${pageToText(p)}`).join('\n\n')
+      : undefined,
+    missingPages: missing.length ? missing.join(', ') : undefined,
+    firstPage: doc.pages[0]?.n,
+    lastPage: doc.pages.at(-1)?.n,
+    toc: doc.pages.map((p) => `${p.n}. ${String(p.title).replace(/<[^>]+>/g, '')}`).join('\n'),
     quote: String(quote || '').slice(0, 1200) || undefined,
   };
 
@@ -710,6 +769,8 @@ async function handleChat(req, res, body) {
       route: 'chat', model, latency_ms: latency, page: ctx.page, has_quote: !!ctx.quote,
       in_tokens: usage?.prompt_tokens, out_tokens: usage?.completion_tokens, total_tokens: usage?.total_tokens,
       chars_out: full.length,
+      asked_pages: askedPages.length ? askedPages.map((p) => p.n) : undefined,
+      asked_missing: missing.length ? missing : undefined,
     });
   } catch (e) {
     console.error('[chat/stream]', e.message);

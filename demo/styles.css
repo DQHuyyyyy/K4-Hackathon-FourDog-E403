@@ -190,12 +190,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   border-radius:10px;padding:7px 12px;white-space:nowrap;font-weight:600;
 }
 
-.presenter{
-  position:absolute;top:19px;right:56px;z-index:26;
-  font-size:11.5px;font-weight:800;color:var(--coral);background:var(--coral-soft);
-  border:1px solid var(--coral-line);padding:6px 12px;border-radius:99px;box-shadow:var(--shadow-1);
-}
-
 /* ─── page canvas ─── */
 .scroller{flex:1;overflow-y:auto;overflow-x:auto;padding:70px 24px 86px;scroll-behavior:smooth}
 .reader[data-mode="pen"] .scroller{cursor:crosshair}
@@ -350,10 +344,6 @@ canvas.ink{position:absolute;inset:0;border-radius:10px;pointer-events:none;z-in
 .msg .cursor{display:inline-block;width:7px;height:14px;background:var(--brand);vertical-align:-2px;border-radius:1px;animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:0}}
 
-.alert{background:var(--coral-soft);border:1px solid var(--coral-line);border-radius:13px;padding:12px 14px}
-.alert .h{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:var(--coral)}
-.alert .h svg{width:17px;height:17px}
-.alert .b{font-size:12.5px;color:var(--coral-ink);margin-top:6px;line-height:1.55}
 .err{background:var(--red-soft);border:1px solid var(--red-line);border-radius:13px;padding:12px 14px}
 .err .h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--red)}
 .err .h svg{width:17px;height:17px}
@@ -362,8 +352,6 @@ canvas.ink{position:absolute;inset:0;border-radius:10px;pointer-events:none;z-in
 
 .btn{width:100%;border-radius:11px;font-weight:750;font-size:13.5px;padding:12px;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn svg{width:17px;height:17px}
-.btn-coral{background:var(--coral);color:#fff}
-.btn-coral:hover{filter:brightness(.94)}
 .btn-blue{background:var(--brand);color:#fff}
 .btn-blue:hover{filter:brightness(1.08)}
 .btn-ghost{background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);font-size:12.5px;padding:10px}
@@ -382,18 +370,6 @@ canvas.ink{position:absolute;inset:0;border-radius:10px;pointer-events:none;z-in
 .pill.ok{color:var(--green);background:var(--green-soft)}
 .pill.skip{color:var(--muted);background:var(--surface-2);border:1px solid var(--line)}
 .pill.mock{color:var(--coral);background:var(--coral-soft);border:1px solid var(--coral-line)}
-.pill.meta{color:var(--muted);background:var(--surface-2);border:1px solid var(--line);font-family:var(--mono);font-weight:600}
-.bullets{display:flex;flex-direction:column;gap:8px;margin-top:11px}
-.bullet{
-  display:flex;gap:9px;align-items:flex-start;padding:10px 11px;border-radius:11px;
-  border:1px solid var(--line);background:var(--surface-2);width:100%;text-align:left;transition:.15s;
-}
-.bullet:hover{border-color:var(--brand);background:var(--brand-soft)}
-.bullet .chip{flex-shrink:0;font-size:10.5px;font-weight:800;color:var(--brand);background:var(--brand-soft);border:1px solid var(--brand-line);padding:3px 7px;border-radius:7px;margin-top:1px}
-.bullet:hover .chip{background:var(--surface)}
-.bullet .tx{font-size:12.8px;line-height:1.5}
-.bullet.seen{opacity:.48}
-.bullet.unsure .chip{color:var(--coral);background:var(--coral-soft);border-color:var(--coral-line)}
 
 .quote-bar{
   display:flex;align-items:center;gap:8px;margin:0 14px 8px;padding:9px 11px;

@@ -238,12 +238,6 @@
       ]
     }
   ],
-  "mockSummary": [
-    { "p": 5, "t": "Làm sản phẩm AI bao gồm trọn phần làm sản phẩm, cộng lớp AI — 70% thành công đến từ con người và vận hành." },
-    { "p": 6, "t": "Kỳ vọng user tăng vọt và chi phí chuyển đổi rẻ đi, nên user rời đi rất nhanh nếu sản phẩm không khác biệt." },
-    { "p": 7, "t": "Đề bài kiểu \"làm AI chatbot support\" còn mơ hồ — dùng Five Whys đào tới điểm đau thật trước khi build." }
-  ],
-
   "mockWrapup": {
     "takeaways": [
       { "sec": "PHẦN 1 · BỐI CẢNH", "pages": [5, 6],

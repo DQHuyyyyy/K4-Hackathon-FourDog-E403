@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
-   VLearn — Catch Me Up
-   Reader + VLearn Tutor. AI thật gọi qua server.mjs (/api/chat, /api/catchup).
+   VLearn — Tổng kết cuối buổi
+   Reader + VLearn Tutor. AI thật gọi qua server.mjs (/api/chat, /api/wrapup).
    ══════════════════════════════════════════════════════════════ */
 
 const $ = (id) => document.getElementById(id);
@@ -11,12 +11,12 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const T = {
   vi: { lib: 'Học liệu môn học', libSub: 'Chương, slide và tài liệu đã upload', read: 'Đọc', pen: 'Bút', hl: 'Highlight',
         page: 'Trang', tutorSub: 'Trợ lý học theo ngữ cảnh', chatPh: 'Nhập câu hỏi hoặc bôi đen tài liệu…',
-        away: '⏸ Mô phỏng rời đi 3 phút', stuck: '⏱ Mô phỏng dừng lâu', reset: '↺ Reset',
+        stuck: '⏱ Mô phỏng dừng lâu', reset: '↺ Reset',
         askSel: 'Hỏi Tutor về đoạn này', hlSel: 'Highlight',
         wrap: 'Tổng kết buổi học', deckT: 'Bộ thẻ ôn cuối buổi' },
   en: { lib: 'Course materials', libSub: 'Chapters, slides and uploaded files', read: 'Read', pen: 'Pen', hl: 'Highlight',
         page: 'Page', tutorSub: 'Context-aware study assistant', chatPh: 'Ask a question or select text…',
-        away: '⏸ Simulate 3-min absence', stuck: '⏱ Simulate long dwell', reset: '↺ Reset',
+        stuck: '⏱ Simulate long dwell', reset: '↺ Reset',
         askSel: 'Ask Tutor about this', hlSel: 'Highlight',
         wrap: 'Wrap up the session', deckT: 'End-of-session review deck' },
 };
@@ -34,7 +34,6 @@ function applyLang() {
 /* ─────────────── state ─────────────── */
 let DOC = null;                     // pages.json
 let cur = 3;                        // trang học viên đang xem
-let presenter = 3;                  // trang giảng viên đang ở
 let zoom = 1;
 let mode = 'read';                  // read | pen | hl
 let penW = 3;
@@ -50,7 +49,6 @@ const ratios = new Map();
 const DWELL_MS = 60_000;            // ngưỡng: 60 giây ở cùng một trang
 let dwellMs = 0;                    // thời gian đã ở trang hiện tại (chỉ tính lúc đang thật sự đọc)
 let armed = false;                  // badge "?" đang hiện
-let awayRunning = false;            // đang chạy mô phỏng rời đi → không tính dwell
 const struggled = new Set();        // trang đã hỏi rồi, mỗi trang chỉ 1 lần/phiên
 
 /* tổng kết cuối buổi + bộ thẻ ôn */
@@ -166,7 +164,7 @@ function setCur(n) {
   $('slideChip').textContent = `${T[LANG].page} slide: ${n}`;
   $('ctxLine').innerHTML = `Ngữ cảnh: <b>Slide trang ${n}</b>`;
   if (single) document.querySelectorAll('.page').forEach((p) => p.classList.toggle('cur', Number(p.dataset.page) === n));
-  if (!awayRunning && n === DOC.pages.at(-1).n) inviteWrap();   // đọc hết tài liệu → mời tổng kết
+  if (n === DOC.pages.at(-1).n) inviteWrap();   // đọc hết tài liệu → mời tổng kết
 }
 const renderPagerLabel = () => { $('pgNow').textContent = cur; };
 function renderNote() {
@@ -425,11 +423,7 @@ async function sendChat(text, opts = {}) {
           let evt; try { evt = JSON.parse(line.slice(5).trim()); } catch { continue; }
           if (evt.delta) { acc += evt.delta; bubble.innerHTML = fmt(acc) + '<span class="cursor"></span>'; bottom(); }
           if (evt.error) { bubble.innerHTML = fmt(acc); errBlock(evt.error); }
-          if (evt.done) {
-            bubble.innerHTML = fmt(acc);
-            const m = evt.meta || {};
-            bubble.appendChild(el(`<div class="pills"><span class="pill meta">${esc(m.model || '')} · ${((m.latency_ms || 0) / 1000).toFixed(1)}s${m.total_tokens ? ' · ' + m.total_tokens + ' tok' : ''}</span></div>`));
-          }
+          if (evt.done) bubble.innerHTML = fmt(acc);
         }
       }
     }
@@ -447,9 +441,9 @@ async function sendChat(text, opts = {}) {
 
 /* ─────────────── phát hiện dừng lâu → badge "?" ─────────────── */
 
-/** Đồng hồ chỉ chạy khi học viên thật sự đang đọc trang: tab hiện, không mô phỏng vắng, chưa hỏi trang này. */
+/** Đồng hồ chỉ chạy khi học viên thật sự đang đọc trang: tab hiện, chưa hỏi trang này. */
 function tickDwell() {
-  if (document.hidden || awayRunning || armed || struggled.has(cur)) return;
+  if (document.hidden || armed || struggled.has(cur)) return;
   dwellMs += 1000;
   if (dwellMs >= DWELL_MS) arm();
 }
@@ -504,8 +498,6 @@ async function askStruggle() {
       c.onclick = () => { c.closest('.chips').querySelectorAll('.chip-q').forEach((b) => (b.disabled = true)); sendChat(h.q, { quote: '' }); };
       host.appendChild(c);
     });
-    const m = data.meta || {};
-    host.appendChild(el(`<div class="pills"><span class="pill meta">${esc(m.model || '')} · ${((m.latency_ms || 0) / 1000).toFixed(1)}s${m.total_tokens ? ' · ' + m.total_tokens + ' tok' : ''}</span></div>`));
     setState('Sẵn sàng');
     bottom();
   } catch (e) {
@@ -515,113 +507,9 @@ async function askStruggle() {
   }
 }
 
-/* ─────────────── Catch Me Up ─────────────── */
-function simulateAway() {
-  const last = DOC.pages.at(-1).n;
-  const from = cur + 1;
-  const to = Math.min(cur + 4, last);
-  if (to < from + 1) return toast('Cuộn về gần đầu tài liệu rồi chạy lại demo');
-
-  $('btnAway').disabled = true;
-  awayRunning = true;              // dừng đồng hồ dwell: đang vắng thì không phải đang mắc
-  resetDwell();
-  setState('Bạn đang vắng…');
-  $('presenter').hidden = false;
-  let n = cur;
-  const iv = setInterval(() => {
-    n++;
-    presenter = n;
-    $('presenter').textContent = `Giảng viên đang ở trang ${n}`;
-    if (n >= to) { clearInterval(iv); awayRunning = false; onMissed(from, to); }
-  }, 300);
-}
-
-function onMissed(from, to) {
-  const k = to - from + 1;
-  setState('Phát hiện bạn lỡ trang');
-  push(el(`<div class="msg sys">— Bạn vừa quay lại sau khi vắng 3 phút —</div>`));
-  push(el(`
-    <div class="alert">
-      <div class="h"><svg><use href="#i-warn"/></svg> Bạn đã lỡ ${k} trang</div>
-      <div class="b">Trong lúc bạn vắng, bài giảng đã đi từ trang ${from} đến ${to}. Bắt kịp ngay thay vì tua lại từng trang?</div>
-    </div>`));
-  const btn = el(`<button class="btn btn-coral"><svg><use href="#i-bolt"/></svg> Catch me up (${from}–${to})</button>`);
-  btn.onclick = () => { btn.remove(); catchUp(from, to); };
-  push(btn);
-  toast(`VLearn Tutor: bạn đã lỡ ${k} trang`);
-}
-
-async function catchUp(from, to) {
-  const k = to - from + 1;
-  push(el(`<div class="msg user">⚡ Catch me up (${from}–${to})</div>`));
-  setState('Đang đọc các trang bạn đã lỡ…');
-  const load = push(el(`
-    <div class="load">
-      <div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div>
-      <div class="note">AI đang đọc ${k} trang và chọn ra trang chứa ý chính…</div>
-    </div>`));
-
-  try {
-    const res = await fetch('/api/catchup', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to }),
-    });
-    const data = await res.json();
-    load.remove();
-    if (data.error) return errBlock(data.error, () => showSummary(from, to, DOC.mockSummary, [], { mock: true }));
-    showSummary(from, to, data.bullets, data.skipped || [], data.meta || {});
-  } catch (e) {
-    load.remove();
-    errBlock({ code: 'network', message: 'Không kết nối được server: ' + e.message },
-      () => showSummary(from, to, DOC.mockSummary, [], { mock: true }));
-  }
-}
-
-function showSummary(from, to, bullets, skipped, meta) {
-  setState('Sẵn sàng');
-  const k = to - from + 1;
-  const node = el(`
-    <div class="msg bot">
-      <div class="sum-head">Tóm tắt nhanh ${k} trang bạn đã lỡ</div>
-      <div class="sum-sub">Trang ${from}–${to} · theo đúng thứ tự</div>
-      <div class="pills">
-        <span class="pill ok">✓ Ý chính: ${bullets.length}/${k} trang</span>
-        ${skipped.length ? `<span class="pill skip">Bỏ trang phụ: ${skipped.map((s) => s.p).join(', ')}</span>` : ''}
-        ${meta.mock ? `<span class="pill mock">MOCK — chưa gọi AI</span>`
-          : `<span class="pill meta">${esc(meta.model || '')} · ${((meta.latency_ms || 0) / 1000).toFixed(1)}s${meta.total_tokens ? ' · ' + meta.total_tokens + ' tok' : ''}</span>`}
-      </div>
-      <div class="bullets"></div>
-    </div>`);
-  const list = node.querySelector('.bullets');
-  bullets.forEach((b) => {
-    const unsure = /chưa chắc/i.test(b.t);
-    const item = el(`<button class="bullet ${unsure ? 'unsure' : ''}"><span class="chip">Trang ${b.p}</span><span class="tx">${esc(b.t)}</span></button>`);
-    item.onclick = () => { item.classList.add('seen'); goTo(b.p); flash(b.p); };
-    list.appendChild(item);
-  });
-  if (!bullets.length) list.appendChild(el(`<div class="msg sys">AI đánh giá cả ${k} trang này đều là trang phụ — bạn không bỏ lỡ ý chính nào.</div>`));
-  push(node);
-
-  const done = el(`<button class="btn btn-blue">✓ Đã bắt kịp — tiếp tục học</button>`);
-  done.onclick = () => { done.remove(); caughtUp(to); };
-  push(done);
-  push(el(`<div class="msg sys">Bấm từng ý để nhảy tới đúng trang đó.</div>`));
-  if (skipped.length) push(el(`<div class="msg sys">Trang bị bỏ: ${skipped.map((s) => `${s.p} (${esc(s.why)})`).join(' · ')}</div>`));
-}
-
-function caughtUp(to) {
-  presenter = to;
-  goTo(to); flash(to);
-  $('presenter').hidden = true;
-  $('btnAway').disabled = false;
-  setState('Đang theo dõi bài giảng');
-  push(el(`<div class="msg bot">Đã bắt kịp! Bạn đang ở cùng trang với giảng viên. Cần bắt kịp lần nữa thì cứ rời đi rồi quay lại nhé.</div>`));
-  toast('Bạn đã bắt kịp bài giảng ✓');
-}
-
 /* ─────────────── Tổng kết cuối buổi ───────────────
-   Cùng quyết định AI với Catch Me Up ("ý chính hay trang phụ?"), chỉ đổi phạm vi:
-   thay vì 4 trang bị lỡ thì đọc cả buổi, và gom các trang cùng một ý thành một mạch. */
+   Lát cắt chính: AI đọc cả buổi và quyết định từng trang là ý chính hay trang phụ,
+   rồi gom các trang cùng một ý thành một mạch. */
 
 /** Học viên đọc tới trang cuối → mời tổng kết, nhưng vẫn im lặng chờ bấm (push tín hiệu, pull nội dung). */
 function inviteWrap() {
@@ -687,8 +575,7 @@ function showWrapup(takeaways, skipped, meta) {
       <div class="pills">
         <span class="pill ok">✓ Ý chính: ${picked}/${total} trang</span>
         ${skipped.length ? `<span class="pill skip">Bỏ trang phụ: ${skipped.map((s) => s.p).join(', ')}</span>` : ''}
-        ${meta.mock ? `<span class="pill mock">MOCK — chưa gọi AI</span>`
-          : `<span class="pill meta">${esc(meta.model || '')} · ${((meta.latency_ms || 0) / 1000).toFixed(1)}s${meta.total_tokens ? ' · ' + meta.total_tokens + ' tok' : ''}</span>`}
+        ${meta.mock ? `<span class="pill mock">MOCK — chưa gọi AI</span>` : ''}
       </div>
       <div class="takes"></div>
     </div>`);
@@ -964,10 +851,6 @@ function toast(m) {
 function resetDemo() {
   Object.keys(A).forEach((n) => { A[n].ops.filter((o) => o.t === 'mark').forEach((o) => unwrap(o.els)); delete A[n]; });
   renderPages();
-  presenter = 3;
-  $('presenter').hidden = true;
-  $('btnAway').disabled = false;
-  awayRunning = false;
   struggled.clear(); resetDwell();
   wrapData = null; wrapping = false; wrapInvited = false;
   deck = []; deckI = 0; deckShaky = [];
@@ -1071,7 +954,6 @@ function wire() {
   $('deckClose').onclick = closeDeck;
 
   // demo
-  $('btnAway').onclick = simulateAway;
   $('btnStuck').onclick = () => {
     if (struggled.has(cur)) return toast(`Trang ${cur} đã hỏi rồi — cuộn sang trang khác hoặc bấm Reset`);
     dwellMs = DWELL_MS; arm();
